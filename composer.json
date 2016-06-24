@@ -1,0 +1,9 @@
+{
+    "name": "smichaelsen/autourls",
+    "type": "typo3-cms-extension",
+    "autoload": {
+        "psr-4": {
+            "Smichaelsen\\Autourls\\": "Classes/"
+        }
+    }
+}
