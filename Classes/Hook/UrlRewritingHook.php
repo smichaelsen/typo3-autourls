@@ -50,14 +50,16 @@ class UrlRewritingHook
     }
 
     /**
-     * Uses the very fast crc32 hash
+     * Uses the very fast crc32 hash.
+     * This is NO cryptographic hash function(!!) but hashes strings quickly down
+     * to integers for better database performance.
      *
-     * @param string $queryString
+     * @param string $string
      * @return int
      */
-    protected function hashQueryString(string $queryString):int
+    protected function fastHash(string $string):int
     {
-        return (int)sprintf('%u', crc32($queryString));
+        return (int)sprintf('%u', crc32($string));
     }
 
     /**
@@ -129,7 +131,7 @@ class UrlRewritingHook
             ->select('path')
             ->from('tx_autourls_map')
             ->where(
-                $queryBuilder->expr()->eq('querystring_hash', $this->hashQueryString($queryString)),
+                $queryBuilder->expr()->eq('querystring_hash', $this->fastHash($queryString)),
                 $queryBuilder->expr()->gt('encoding_expires', $GLOBALS['EXEC_TIME'])
             )
             ->execute()->fetchColumn();
@@ -147,7 +149,7 @@ class UrlRewritingHook
             ->select('querystring')
             ->from('tx_autourls_map')
             ->where(
-                $queryBuilder->expr()->eq('path', $queryBuilder->quote($path))
+                $queryBuilder->expr()->eq('path_hash', $this->fastHash($path))
             )
             ->execute()->fetchColumn();
         return $value !== false ? (string)$value : null;
@@ -204,22 +206,23 @@ class UrlRewritingHook
             ->select('querystring_hash')
             ->from('tx_autourls_map')
             ->where(
-                $queryBuilder->expr()->eq('querystring_hash', $this->hashQueryString($queryString))
+                $queryBuilder->expr()->eq('querystring_hash', $this->fastHash($queryString))
             )
             ->execute()->fetchColumn();
         if ($recordExists) {
             $queryBuilder
                 ->update('tx_autourls_map')
-                ->where($queryBuilder->expr()->eq('querystring_hash', $this->hashQueryString($queryString)))
+                ->where($queryBuilder->expr()->eq('querystring_hash', $this->fastHash($queryString)))
                 ->set('encoding_expires', $GLOBALS['EXEC_TIME'] + 3600)
                 ->execute();
         } else {
             $queryBuilder
                 ->insert('tx_autourls_map')
                 ->values([
-                    'querystring_hash' => $this->hashQueryString($queryString),
+                    'querystring_hash' => $this->fastHash($queryString),
                     'querystring' => $queryString,
                     'path' => $path,
+                    'path_hash' => $this->fastHash($path),
                     'encoding_expires' => $GLOBALS['EXEC_TIME'] + 3600,
                 ])
                 ->execute();
