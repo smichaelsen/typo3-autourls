@@ -30,7 +30,8 @@ class UrlDecodingService extends AbstractUrlMapService implements SingletonInter
             ->select('querystring')
             ->from('tx_autourls_map')
             ->where(
-                $queryBuilder->expr()->eq('path_hash', $this->fastHash($path))
+                $queryBuilder->expr()->eq('path_hash', $this->fastHash($path)),
+                $queryBuilder->expr()->eq('is_shortcut', 0)
             )
             ->execute()->fetchColumn();
         return $value !== false ? (string)$value : null;

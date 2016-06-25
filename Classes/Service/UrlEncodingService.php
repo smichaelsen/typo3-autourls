@@ -27,12 +27,22 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
      */
     public function encodeFromQueryString(string $queryString):string
     {
+        $isShortcut = false;
         $path = $this->findPathForQueryStringInMap($queryString);
         if ($path === null) {
             $urlParameters = $this->queryStringToParametersArray($queryString);
             $pathSegments = [];
             if (isset($urlParameters['id'])) {
-                $pagePathSegment = $this->getPathForPageId($urlParameters['id']);
+                $pageRecord = BackendUtility::getRecord('pages', (int)$urlParameters['id']);
+                if ((int)$pageRecord['doktype'] === PageRepository::DOKTYPE_SHORTCUT) {
+                    $pageRecord = $this->getTyposcriptFrontendController()->getPageShortcut(
+                        $pageRecord['shortcut'],
+                        $pageRecord['shortcut_mode'],
+                        $pageRecord['uid']
+                    );
+                    $isShortcut = true;
+                }
+                $pagePathSegment = $this->getPathForPageRecord($pageRecord);
                 if ($pagePathSegment === null) {
                     return $queryString;
                 }
@@ -69,7 +79,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
             if (count($urlParameters)) {
                 $path .= '?' . $this->parametersArrayToQueryString($urlParameters);
             }
-            $this->insertOrRenewMapEntry($queryString, $path);
+            $this->insertOrRenewMapEntry($queryString, $path, $isShortcut);
         }
         $prefix = $encodedPath = $this->getTemplateService()->setup['config.']['absRefPrefix'] ?? '/';
         return $prefix . $path;
@@ -126,18 +136,16 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
     }
 
     /**
-     * @param int $id
+     * @param array $targetPage
      * @return string|null
      */
-    protected function getPathForPageId(int $id)
+    protected function getPathForPageRecord(array $targetPage)
     {
-        $pathSegments = [];
-        $rootline = $this->getRootline($id);
-        reset($rootline);
-        $targetPage = current($rootline);
-        if (!in_array($targetPage['doktype'], self::SUPPORTED_DOKTYPES)) {
+        if ((int)$targetPage['doktype'] !== PageRepository::DOKTYPE_DEFAULT) {
             return null;
         }
+        $rootline = $this->getRootline($targetPage['uid']);
+        $pathSegments = [];
         foreach ($rootline as $rootlinePage) {
             if ($rootlinePage['is_siteroot']) {
                 break;
@@ -171,8 +179,9 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
     /**
      * @param string $queryString
      * @param string $path
+     * @param bool $isShortcut
      */
-    protected function insertOrRenewMapEntry(string $queryString, string $path)
+    protected function insertOrRenewMapEntry(string $queryString, string $path, bool $isShortcut)
     {
         $combinedHash = $this->fastHash($queryString . ':' . $path);
         $queryBuilder = $this->getMapQueryBuilder();
@@ -190,6 +199,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
                 ->set('encoding_expires', $this->getExpiryTimestamp())
                 ->set('path', $path)
                 ->set('path_hash', $this->fastHash($path))
+                ->set('is_shortcut', $isShortcut)
                 ->execute();
         } else {
             $queryBuilder
@@ -201,6 +211,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
                     'path' => $path,
                     'path_hash' => $this->fastHash($path),
                     'encoding_expires' => $this->getExpiryTimestamp(),
+                    'is_shortcut' => $isShortcut,
                 ])
                 ->execute();
         }

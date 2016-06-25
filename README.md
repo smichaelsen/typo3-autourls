@@ -17,7 +17,9 @@ No. `autourls` offers only very limited functionality and is no match to `realur
 ### Okay, then what does it do?
 
 It just creates a speaking path for each page based on its rootline. So the rootline "Service > About us" results in the path `/service/about-us`. It respects the `nav_title` field of `pages` and the `config.absRefPrefix` TypoScript setting.
-After renaming a page the "old" url will still be accessible.
+
+* After renaming a page the "old" url will still be accessible.
+* Shortcut pages are handled correctly (their path is the one from their target page, just like in realurl)
 
 ### What about extension parameters?
 
@@ -36,9 +38,9 @@ And of course if you have some kind of package/template extension, you can also 
 
 Not supported yet, but will follow pretty soon.
 
-### What about mountpoints, shortcuts, workspaces, ...?
+### What about mountpoints, workspaces, ...?
 
-Not supported yet. Shortcuts should follow pretty soon. Everything else might follow as there is demand for it.
+Not supported yet. Those might follow as there is demand for it.
 
 ### How can I configure ...?
 
