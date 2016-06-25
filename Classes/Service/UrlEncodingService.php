@@ -142,7 +142,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
             $queryBuilder
                 ->update('tx_autourls_map')
                 ->where($queryBuilder->expr()->eq('combined_hash', $combinedHash))
-                ->set('encoding_expires', $GLOBALS['EXEC_TIME'] + 3600)
+                ->set('encoding_expires', $this->getExpiryTimestamp())
                 ->set('path', $path)
                 ->set('path_hash', $this->fastHash($path))
                 ->execute();
@@ -155,10 +155,23 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
                     'querystring' => $queryString,
                     'path' => $path,
                     'path_hash' => $this->fastHash($path),
-                    'encoding_expires' => $GLOBALS['EXEC_TIME'] + 3600,
+                    'encoding_expires' => $this->getExpiryTimestamp(),
                 ])
                 ->execute();
         }
+    }
+
+    /**
+     * Expiry is about a day but randomly distributed to avoid expiry of many paths at once
+     *
+     * @return int
+     */
+    protected function getExpiryTimestamp():int
+    {
+        $lifetime = 86400;
+        $variance = .25;
+        $lifetime = rand((1 - $variance) * $lifetime, (1 + $variance) * $lifetime);
+        return $GLOBALS['EXEC_TIME'] + $lifetime;
     }
 
     /**
