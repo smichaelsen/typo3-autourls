@@ -8,6 +8,8 @@ After installing `autourls` your TYPO3 website will have speaking URLs without a
 
 `composer require smichaelsen/autourls`
 
+Afterwards just install it in the Extension Manager as usual.
+
 ### Cool! Does it replace realurl?
 
 No. `autourls` offers only very limited functionality and is no match to `realurl` in terms of features and flexibility.
