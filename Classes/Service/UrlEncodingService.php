@@ -133,12 +133,14 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
     {
         $pathSegments = [];
         $rootline = $this->getRootline($id);
+        reset($rootline);
+        $targetPage = current($rootline);
+        if (!in_array($targetPage['doktype'], self::SUPPORTED_DOKTYPES)) {
+            return null;
+        }
         foreach ($rootline as $rootlinePage) {
             if ($rootlinePage['is_siteroot']) {
                 break;
-            }
-            if (!in_array($rootlinePage['doktype'], self::SUPPORTED_DOKTYPES)) {
-                return null;
             }
             $slugField = '';
             foreach (['nav_title', 'title', 'uid'] as $possibleSlugField) {
