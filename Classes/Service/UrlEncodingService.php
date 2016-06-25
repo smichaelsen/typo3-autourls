@@ -95,7 +95,14 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
             if ($rootlinePage['is_siteroot']) {
                 break;
             }
-            $pathSegments[] = $this->slugify($rootlinePage['title']);
+            $slugField = '';
+            foreach (['nav_title', 'title', 'uid'] as $possibleSlugField) {
+                if (!empty($rootlinePage[$possibleSlugField])) {
+                    $slugField = $possibleSlugField;
+                    break;
+                }
+            }
+            $pathSegments[] = $this->slugify($rootlinePage[$slugField]);
         }
         return join('/', array_reverse($pathSegments));
     }
