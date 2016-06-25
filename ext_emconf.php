@@ -1,6 +1,6 @@
 <?php
 
-$EM_CONF['autourls'] = [
+$EM_CONF[$_EXTKEY] = [
     'title' => 'autourls',
     'description' => 'Zero configuration URLs for TYPO3',
     'category' => 'fe',
