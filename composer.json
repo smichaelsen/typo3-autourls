@@ -1,9 +1,23 @@
 {
     "name": "smichaelsen/autourls",
+    "description": "Zero configuration speaking URLs for TYPO3 8",
     "type": "typo3-cms-extension",
+    "license": "GPL-2.0+",
     "autoload": {
         "psr-4": {
             "Smichaelsen\\Autourls\\": "Classes/"
+        }
+    },
+    "require": {
+        "typo3/cms-core": "^8.1"
+    },
+    "replace": {
+        "autourls": "self.version",
+        "typo3-ter/autourls": "self.version"
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-master": "1.0.x-dev"
         }
     }
 }
