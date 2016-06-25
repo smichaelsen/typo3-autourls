@@ -21,7 +21,16 @@ After renaming a page the "old" url will still be accessible.
 
 ### What about extension parameters?
 
-Not supported yet, but will follow pretty soon.
+`autourls` comes with native (basic) support for the `news` extension.
+
+Extensions can register themselves by calling `\Smichaelsen\Autourls\ExtensionParameterRegistry::register()` in their `ext_localconf.php`.
+Take a look at the function header for more explanation.
+
+If you want an extension to be supported by `autourls` you can contact the extension author and ask if they want to include the registration.
+
+If they refuse, you can also [open an issue for autourls](https://github.com/smichaelsen/typo3-autourls/issues). I'm willing to add support for common open source extensions.
+
+And of course if you have some kind of package/template extension, you can also register support there too.
 
 ### What about multi language handling?
 
@@ -33,7 +42,7 @@ Not supported yet. Shortcuts should follow pretty soon. Everything else might fo
 
 ### How can I configure ...?
 
-You can't. Until now autourls is literally zero configuration.
+You can't. Until now `autourls` is literally zero configuration.
 
 ### But that doesn't fit my requirements!
 

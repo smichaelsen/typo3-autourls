@@ -1,6 +1,9 @@
 <?php
 namespace Smichaelsen\Autourls\Service;
 
+use Smichaelsen\Autourls\ArrayUtility;
+use Smichaelsen\Autourls\ExtensionParameterRegistry;
+use TYPO3\CMS\Backend\Utility\BackendUtility;
 use TYPO3\CMS\Core\Cache\CacheManager;
 use TYPO3\CMS\Core\Charset\CharsetConverter;
 use TYPO3\CMS\Core\SingletonInterface;
@@ -20,23 +23,52 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
 
     /**
      * @param string $queryString
-     * @return string|null
+     * @return string
      */
     public function encodeFromQueryString(string $queryString):string
     {
         $path = $this->findPathForQueryStringInMap($queryString);
         if ($path === null) {
             $urlParameters = $this->queryStringToParametersArray($queryString);
-            $encodedPath = '';
+            $pathSegments = [];
             if (isset($urlParameters['id'])) {
                 $pagePathSegment = $this->getPathForPageId($urlParameters['id']);
                 if ($pagePathSegment === null) {
                     return $queryString;
                 }
-                $encodedPath .= $pagePathSegment;
+                if (!empty($pagePathSegment)) {
+                    $pathSegments[] = $pagePathSegment;
+                }
                 unset($urlParameters['id']);
             }
-            $path = $encodedPath . $this->parametersArrayToQueryString($urlParameters);
+            foreach (ExtensionParameterRegistry::get() as $extensionName => $extensionConfiguration) {
+                $extensionQueryParameter = $this->queryStringToParametersArray($extensionConfiguration['queryString']);
+                if (ArrayUtility::array_all_keys_exist($urlParameters, array_keys($extensionQueryParameter))) {
+                    $pathSegments[] = $this->slugify($extensionName);
+                    foreach ($extensionQueryParameter as $extensionParameterName => $extensionParameterValue) {
+                        if ($extensionParameterValue === $urlParameters[$extensionParameterName]) {
+                            unset($urlParameters[$extensionParameterName]);
+                            continue;
+                        }
+                        if ($extensionParameterValue === '_UID_') {
+                            $pathSegments[] = $this->slugify(
+                                BackendUtility::getRecordTitle(
+                                    $extensionConfiguration['tableName'],
+                                    BackendUtility::getRecord($extensionConfiguration['tableName'], $urlParameters[$extensionParameterName])
+                                )
+                            );
+                            unset($urlParameters[$extensionParameterName]);
+                        }
+                    }
+                }
+            }
+            if (count($urlParameters) === 1 && isset($urlParameters['cHash'])) {
+                unset($urlParameters['cHash']);
+            }
+            $path = join('/', $pathSegments);
+            if (count($urlParameters)) {
+                $path .= '?' . $this->parametersArrayToQueryString($urlParameters);
+            }
             $this->insertOrRenewMapEntry($queryString, $path);
         }
         $prefix = $encodedPath = $this->getTemplateService()->setup['config.']['absRefPrefix'] ?? '/';
@@ -45,7 +77,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
 
     /**
      * @param array $parametersArray
-     * @return string|null
+     * @return string
      */
     public function encodeFromParametersArray(array $parametersArray):string
     {

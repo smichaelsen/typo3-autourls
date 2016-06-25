@@ -27,11 +27,7 @@ abstract class AbstractUrlMapService
      */
     protected function queryStringToParametersArray(string $queryString):array
     {
-        $urlParameters = [];
-        foreach (explode('&', $queryString) as $parameter) {
-            list($parameterName, $parameterValue) = explode('=', $parameter);
-            $urlParameters[$parameterName] = $parameterValue;
-        }
+        parse_str($queryString, $urlParameters);
         return $urlParameters;
     }
 
@@ -41,11 +37,7 @@ abstract class AbstractUrlMapService
      */
     protected function parametersArrayToQueryString(array $urlParameters):string
     {
-        $queryStringParts = [];
-        foreach ($urlParameters as $parameterName => $parameterValue) {
-            $queryStringParts[] = $parameterName . '=' . $parameterValue;
-        }
-        return join('&', $queryStringParts);
+        return http_build_query($urlParameters);
     }
 
     /**
