@@ -79,6 +79,8 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
                 $queryBuilder->expr()->eq('querystring_hash', $this->fastHash($queryString)),
                 $queryBuilder->expr()->gt('encoding_expires', $GLOBALS['EXEC_TIME'])
             )
+            ->orderBy('encoding_expires', 'DESC')
+            ->setMaxResults(1)
             ->execute()->fetchColumn();
         return $value !== false ? (string)$value : null;
     }
@@ -127,18 +129,19 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
      */
     protected function insertOrRenewMapEntry(string $queryString, string $path)
     {
+        $combinedHash = $this->fastHash($queryString . ':' . $path);
         $queryBuilder = $this->getMapQueryBuilder();
         $recordExists = (bool)$queryBuilder
             ->select('querystring_hash')
             ->from('tx_autourls_map')
             ->where(
-                $queryBuilder->expr()->eq('querystring_hash', $this->fastHash($queryString))
+                $queryBuilder->expr()->eq('combined_hash', $combinedHash)
             )
             ->execute()->fetchColumn();
         if ($recordExists) {
             $queryBuilder
                 ->update('tx_autourls_map')
-                ->where($queryBuilder->expr()->eq('querystring_hash', $this->fastHash($queryString)))
+                ->where($queryBuilder->expr()->eq('combined_hash', $combinedHash))
                 ->set('encoding_expires', $GLOBALS['EXEC_TIME'] + 3600)
                 ->set('path', $path)
                 ->set('path_hash', $this->fastHash($path))
@@ -147,6 +150,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
             $queryBuilder
                 ->insert('tx_autourls_map')
                 ->values([
+                    'combined_hash' => $combinedHash,
                     'querystring_hash' => $this->fastHash($queryString),
                     'querystring' => $queryString,
                     'path' => $path,
