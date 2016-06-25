@@ -52,24 +52,15 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
                 unset($urlParameters['id']);
             }
             foreach (ExtensionParameterRegistry::get() as $extensionName => $extensionConfiguration) {
-                $extensionQueryParameter = $this->queryStringToParametersArray($extensionConfiguration['queryString']);
-                if (ArrayUtility::array_all_keys_exist($urlParameters, array_keys($extensionQueryParameter))) {
+                $extensionQueryParameters = $this->queryStringToParametersArray($extensionConfiguration['queryString']);
+                if (ArrayUtility::array_has_all_keys_of_array($urlParameters, $extensionQueryParameters)) {
                     $pathSegments[] = $this->slugify($extensionName);
-                    foreach ($extensionQueryParameter as $extensionParameterName => $extensionParameterValue) {
-                        if ($extensionParameterValue === $urlParameters[$extensionParameterName]) {
-                            unset($urlParameters[$extensionParameterName]);
-                            continue;
-                        }
-                        if ($extensionParameterValue === '_UID_') {
-                            $pathSegments[] = $this->slugify(
-                                BackendUtility::getRecordTitle(
-                                    $extensionConfiguration['tableName'],
-                                    BackendUtility::getRecord($extensionConfiguration['tableName'], $urlParameters[$extensionParameterName])
-                                )
-                            );
-                            unset($urlParameters[$extensionParameterName]);
-                        }
-                    }
+                    $this->replaceExtensionParameters(
+                        $urlParameters,
+                        $pathSegments,
+                        $this->queryStringToParametersArray($extensionConfiguration['queryString']),
+                        $extensionConfiguration['tableName']
+                    );
                 }
             }
             if (count($urlParameters) === 1 && isset($urlParameters['cHash'])) {
@@ -242,6 +233,39 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
         $slug = preg_replace('/[ \-+_]+/', '-', $slug);
         $slug = $this->getCharsetConverter()->specCharsToASCII($charset, $slug);
         return $slug;
+    }
+
+    /**
+     * @param array $urlParameters
+     * @param array $pathSegments
+     * @param array $extensionParameters
+     * @param string $extensionTableName
+     */
+    protected function replaceExtensionParameters(array &$urlParameters, array &$pathSegments, array $extensionParameters, string $extensionTableName)
+    {
+        foreach ($extensionParameters as $extensionParameterName => $extensionParameterValue) {
+            if ($extensionParameterValue === $urlParameters[$extensionParameterName]) {
+                unset($urlParameters[$extensionParameterName]);
+            } elseif ($extensionParameterValue === '_UID_') {
+                $pathSegments[] = $this->slugify(
+                    BackendUtility::getRecordTitle(
+                        $extensionTableName,
+                        BackendUtility::getRecord($extensionTableName, $urlParameters[$extensionParameterName])
+                    )
+                );
+                unset($urlParameters[$extensionParameterName]);
+            } elseif (is_array($extensionParameterValue)) {
+                $this->replaceExtensionParameters(
+                    $urlParameters[$extensionParameterName],
+                    $pathSegments,
+                    $extensionParameters[$extensionParameterName],
+                    $extensionTableName
+                );
+                if (count($urlParameters[$extensionParameterName]) === 0) {
+                    unset($urlParameters[$extensionParameterName]);
+                }
+            }
+        }
     }
 
     /**
