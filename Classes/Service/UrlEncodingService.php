@@ -14,9 +14,13 @@ use TYPO3\CMS\Frontend\Page\PageRepository;
 class UrlEncodingService extends AbstractUrlMapService implements SingletonInterface
 {
 
+    const SUPPORTED_DOKTYPES = [
+        PageRepository::DOKTYPE_DEFAULT,
+    ];
+
     /**
      * @param string $queryString
-     * @return string
+     * @return string|null
      */
     public function encodeFromQueryString(string $queryString):string
     {
@@ -25,7 +29,11 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
             $urlParameters = $this->queryStringToParametersArray($queryString);
             $encodedPath = '';
             if (isset($urlParameters['id'])) {
-                $encodedPath .= $this->getPathForPageId($urlParameters['id']);
+                $pagePathSegment = $this->getPathForPageId($urlParameters['id']);
+                if ($pagePathSegment === null) {
+                    return $queryString;
+                }
+                $encodedPath .= $pagePathSegment;
                 unset($urlParameters['id']);
             }
             $path = $encodedPath . $this->parametersArrayToQueryString($urlParameters);
@@ -37,7 +45,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
 
     /**
      * @param array $parametersArray
-     * @return string
+     * @return string|null
      */
     public function encodeFromParametersArray(array $parametersArray):string
     {
@@ -87,15 +95,18 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
 
     /**
      * @param int $id
-     * @return string
+     * @return string|null
      */
-    protected function getPathForPageId(int $id):string
+    protected function getPathForPageId(int $id)
     {
         $pathSegments = [];
         $rootline = $this->getRootline($id);
         foreach ($rootline as $rootlinePage) {
             if ($rootlinePage['is_siteroot']) {
                 break;
+            }
+            if (!in_array($rootlinePage['doktype'], self::SUPPORTED_DOKTYPES)) {
+                return null;
             }
             $slugField = '';
             foreach (['nav_title', 'title', 'uid'] as $possibleSlugField) {
