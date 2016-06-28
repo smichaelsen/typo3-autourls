@@ -7,10 +7,10 @@ class UrlDecodingService extends AbstractUrlMapService implements SingletonInter
 {
 
     /**
-     * @param $pagePath
-     * @return array
+     * @param string $pagePath
+     * @return array|null
      */
-    public function decodeFromPagePath($pagePath)
+    public function decodeFromPagePath(string $pagePath)
     {
         $queryString = $this->findQueryStringForPathInMap($pagePath);
         if ($queryString === null) {

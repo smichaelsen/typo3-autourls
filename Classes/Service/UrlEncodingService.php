@@ -340,7 +340,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
      * @param int $typeNum
      * @return TypoScriptFrontendController
      */
-    protected function createTsfeInstance($id = 1, $typeNum = 0):TypoScriptFrontendController
+    protected function createTsfeInstance(int $id = 1, int $typeNum = 0):TypoScriptFrontendController
     {
         if (!is_object($GLOBALS['TT'])) {
             $GLOBALS['TT'] = new TimeTracker();
