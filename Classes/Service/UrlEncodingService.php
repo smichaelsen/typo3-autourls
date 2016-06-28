@@ -59,7 +59,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
                         $urlParameters,
                         $pathSegments,
                         $this->queryStringToParametersArray($extensionConfiguration['queryString']),
-                        $extensionConfiguration['tableName']
+                        $extensionConfiguration['tableName'] ?? null
                     );
                 }
             }
@@ -241,12 +241,18 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
      * @param array $extensionParameters
      * @param string $extensionTableName
      */
-    protected function replaceExtensionParameters(array &$urlParameters, array &$pathSegments, array $extensionParameters, string $extensionTableName)
+    protected function replaceExtensionParameters(array &$urlParameters, array &$pathSegments, array $extensionParameters, string $extensionTableName = null)
     {
         foreach ($extensionParameters as $extensionParameterName => $extensionParameterValue) {
             if ($extensionParameterValue === $urlParameters[$extensionParameterName]) {
                 unset($urlParameters[$extensionParameterName]);
+            } elseif ($extensionParameterValue === '_PASS_') {
+                $pathSegments[] = $this->slugify($urlParameters[$extensionParameterName]);
+                unset($urlParameters[$extensionParameterName]);
             } elseif ($extensionParameterValue === '_UID_') {
+                if ($extensionTableName === null) {
+                    throw new \Exception('');
+                }
                 $pathSegments[] = $this->slugify(
                     BackendUtility::getRecordTitle(
                         $extensionTableName,

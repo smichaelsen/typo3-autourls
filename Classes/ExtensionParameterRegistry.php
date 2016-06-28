@@ -22,7 +22,7 @@ class ExtensionParameterRegistry
      * @param string $tableName If a _UID_ is present this table is used to generate a speaking path segment for the record.
      * The TCA label config for table is used as a basis for the url slug.
      */
-    public static function register(string $extensionName, string $queryString, string $tableName)
+    public static function register(string $extensionName, string $queryString, string $tableName = '')
     {
         self::$registry[$extensionName] = [
             'queryString' => $queryString,

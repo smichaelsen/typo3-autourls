@@ -12,6 +12,10 @@ if (\TYPO3\CMS\Core\Utility\ExtensionManagementUtility::isLoaded('news')) {
         'tx_news_pi1[news]=_UID_&tx_news_pi1[controller]=News&tx_news_pi1[action]=detail',
         'tx_news_domain_model_news'
     );
+    \Smichaelsen\Autourls\ExtensionParameterRegistry::register(
+        'NewsPage',
+        'tx_news_pi1[@widget_0][currentPage]=_PASS_'
+    );
 }
 
 /* When you plan to support autourls in your extension, this example is for you:
