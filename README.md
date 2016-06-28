@@ -36,7 +36,7 @@ And of course if you have some kind of package/template extension, you can also 
 
 ### What about multi language handling?
 
-Not supported yet, but will follow pretty soon.
+Yes! If you use the `L` GET parameter to indicate the language (which is very common in TYPO3) it gets automatically rewritten and the page path or extension records are localized accordingly. All with zero configuration!
 
 ### What about mountpoints, workspaces, ...?
 

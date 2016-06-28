@@ -28,12 +28,26 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
     public function encodeFromQueryString(string $queryString):string
     {
         $isShortcut = false;
+        $targetLanguageUid = 0;
         $path = $this->findPathForQueryStringInMap($queryString);
         if ($path === null) {
             $urlParameters = $this->queryStringToParametersArray($queryString);
             $pathSegments = [];
+            if (isset($urlParameters['L'])) {
+                if ((int)$urlParameters['L'] > 0) {
+                    $languageRecord = BackendUtility::getRecord('sys_language', (int)$urlParameters['L']);
+                    if (is_array($languageRecord)) {
+                        $targetLanguageUid = (int)$urlParameters['L'];
+                        $pathSegments[] = $languageRecord['language_isocode'];
+                    }
+                }
+                unset($urlParameters['L']);
+            }
             if (isset($urlParameters['id'])) {
                 $pageRecord = BackendUtility::getRecord('pages', (int)$urlParameters['id']);
+                if ($targetLanguageUid > 0) {
+                    $pageRecord = $this->getPageRepository()->getPageOverlay($pageRecord, $targetLanguageUid);
+                }
                 if ((int)$pageRecord['doktype'] === PageRepository::DOKTYPE_SHORTCUT) {
                     $pageRecord = $this->getTyposcriptFrontendController()->getPageShortcut(
                         $pageRecord['shortcut'],
@@ -42,7 +56,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
                     );
                     $isShortcut = true;
                 }
-                $pagePathSegment = $this->getPathForPageRecord($pageRecord);
+                $pagePathSegment = $this->getPathForPageRecord($pageRecord, $targetLanguageUid);
                 if ($pagePathSegment === null) {
                     return $queryString;
                 }
@@ -59,7 +73,8 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
                         $urlParameters,
                         $pathSegments,
                         $this->queryStringToParametersArray($routeConfiguration['queryString']),
-                        $routeConfiguration['tableName'] ?? null
+                        $routeConfiguration['tableName'] ?? null,
+                        $targetLanguageUid
                     );
                 }
             }
@@ -128,14 +143,18 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
 
     /**
      * @param array $targetPage
-     * @return string|null
+     * @param int $targetLanguageUid
+     * @return null|string
      */
-    protected function getPathForPageRecord(array $targetPage)
+    protected function getPathForPageRecord(array $targetPage, int $targetLanguageUid)
     {
         if ((int)$targetPage['doktype'] !== PageRepository::DOKTYPE_DEFAULT) {
             return null;
         }
         $rootline = $this->getRootline($targetPage['uid']);
+        if ($targetLanguageUid > 0) {
+            $rootline = $this->getPageRepository()->getPagesOverlay($rootline, $targetLanguageUid);
+        }
         $pathSegments = [];
         foreach ($rootline as $rootlinePage) {
             if ($rootlinePage['is_siteroot']) {
@@ -240,9 +259,10 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
      * @param array $pathSegments
      * @param array $extensionParameters
      * @param string $extensionTableName
+     * @param int $targetLanguageUid
      * @throws \Exception
      */
-    protected function replaceExtensionParameters(array &$urlParameters, array &$pathSegments, array $extensionParameters, string $extensionTableName = null)
+    protected function replaceExtensionParameters(array &$urlParameters, array &$pathSegments, array $extensionParameters, string $extensionTableName = null, int $targetLanguageUid = 0)
     {
         foreach ($extensionParameters as $extensionParameterName => $extensionParameterValue) {
             if ($extensionParameterValue === $urlParameters[$extensionParameterName]) {
@@ -254,12 +274,16 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
                 if ($extensionTableName === null) {
                     throw new \Exception('There is an autourl extension parameter query string with _UID_ parameter but without defined table name', 1467096979);
                 }
-                $pathSegments[] = $this->slugify(
-                    BackendUtility::getRecordTitle(
-                        $extensionTableName,
-                        BackendUtility::getRecord($extensionTableName, $urlParameters[$extensionParameterName])
-                    )
-                );
+                $record = BackendUtility::getRecord($extensionTableName, $urlParameters[$extensionParameterName]);
+                if (is_array($record)) {
+                    if ($targetLanguageUid > 0) {
+                        $record = $this->getPageRepository()->getRecordOverlay($extensionTableName, $record, $targetLanguageUid);
+                    }
+                    $value = BackendUtility::getRecordTitle($extensionTableName, $record);
+                } else {
+                    $value = $urlParameters[$extensionParameterName];
+                }
+                $pathSegments[] = $this->slugify($value);
                 unset($urlParameters[$extensionParameterName]);
             } elseif (is_array($extensionParameterValue)) {
                 $this->replaceExtensionParameters(
