@@ -240,6 +240,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
      * @param array $pathSegments
      * @param array $extensionParameters
      * @param string $extensionTableName
+     * @throws \Exception
      */
     protected function replaceExtensionParameters(array &$urlParameters, array &$pathSegments, array $extensionParameters, string $extensionTableName = null)
     {
@@ -251,7 +252,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
                 unset($urlParameters[$extensionParameterName]);
             } elseif ($extensionParameterValue === '_UID_') {
                 if ($extensionTableName === null) {
-                    throw new \Exception('');
+                    throw new \Exception('There is an autourl extension parameter query string with _UID_ parameter but without defined table name', 1467096979);
                 }
                 $pathSegments[] = $this->slugify(
                     BackendUtility::getRecordTitle(
