@@ -12,7 +12,7 @@ Afterwards just install it in the Extension Manager as usual.
 
 ### Cool! Does it replace realurl?
 
-No. `autourls` offers only very limited functionality and is no match to `realurl` in terms of features and flexibility.
+No. `autourls` offers only limited functionality and is no match to `realurl` in terms of features and flexibility.
 
 ### Okay, then what does it do?
 
@@ -26,7 +26,7 @@ It just creates a speaking path for each page based on its rootline. So the root
 `autourls` comes with native (basic) support for the `news` extension.
 
 Extensions can register themselves by calling `\Smichaelsen\Autourls\ExtensionParameterRegistry::register()` in their `ext_localconf.php`.
-Take a look at the class header for more explanation.
+Take a look at the `ExtensionParameterRegistry` class header for more explanation.
 
 If you want an extension to be supported by `autourls` you can contact the extension author and ask if they want to include the registration.
 
