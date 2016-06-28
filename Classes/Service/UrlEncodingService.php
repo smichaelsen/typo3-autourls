@@ -51,15 +51,15 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
                 }
                 unset($urlParameters['id']);
             }
-            foreach (ExtensionParameterRegistry::get() as $extensionName => $extensionConfiguration) {
-                $extensionQueryParameters = $this->queryStringToParametersArray($extensionConfiguration['queryString']);
+            foreach (ExtensionParameterRegistry::get() as $routeName => $routeConfiguration) {
+                $extensionQueryParameters = $this->queryStringToParametersArray($routeConfiguration['queryString']);
                 if (ArrayUtility::array_has_all_keys_of_array($urlParameters, $extensionQueryParameters)) {
-                    $pathSegments[] = $this->slugify($extensionName);
+                    $pathSegments[] = $this->slugify($routeName);
                     $this->replaceExtensionParameters(
                         $urlParameters,
                         $pathSegments,
-                        $this->queryStringToParametersArray($extensionConfiguration['queryString']),
-                        $extensionConfiguration['tableName'] ?? null
+                        $this->queryStringToParametersArray($routeConfiguration['queryString']),
+                        $routeConfiguration['tableName'] ?? null
                     );
                 }
             }
