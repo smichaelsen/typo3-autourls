@@ -28,7 +28,7 @@ class UrlDecodingService extends AbstractUrlMapService implements SingletonInter
         $record = $this->getDatabaseConnection()->exec_SELECTgetSingleRow(
             'querystring',
             'tx_autourls_map',
-            'path_hash = "' . $this->fastHash($path) . '" AND is_shortcut = 0'
+            'path_hash = "' . $this->fastHash(rtrim($path, '/')) . '" AND is_shortcut = 0'
         );
         if (is_array($record) && !empty($record['querystring'])) {
             return $record['querystring'];

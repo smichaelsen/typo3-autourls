@@ -34,21 +34,21 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
             $urlParameters = $this->queryStringToParametersArray($queryString);
             $pathSegments = [];
             if (isset($urlParameters['L'])) {
-                if ((int)$urlParameters['L'] > 0) {
-                    $languageRecord = BackendUtility::getRecord('sys_language', (int)$urlParameters['L']);
+                if ((int) $urlParameters['L'] > 0) {
+                    $languageRecord = BackendUtility::getRecord('sys_language', (int) $urlParameters['L']);
                     if (is_array($languageRecord)) {
-                        $targetLanguageUid = (int)$urlParameters['L'];
+                        $targetLanguageUid = (int) $urlParameters['L'];
                         $pathSegments[] = $languageRecord['language_isocode'];
                     }
                 }
                 unset($urlParameters['L']);
             }
             if (isset($urlParameters['id'])) {
-                $pageRecord = BackendUtility::getRecord('pages', (int)$urlParameters['id']);
+                $pageRecord = BackendUtility::getRecord('pages', (int) $urlParameters['id']);
                 if ($targetLanguageUid > 0) {
                     $pageRecord = $this->getPageRepository()->getPageOverlay($pageRecord, $targetLanguageUid);
                 }
-                if ((int)$pageRecord['doktype'] === PageRepository::DOKTYPE_SHORTCUT) {
+                if ((int) $pageRecord['doktype'] === PageRepository::DOKTYPE_SHORTCUT) {
                     $pageRecord = $this->getTyposcriptFrontendController()->getPageShortcut(
                         $pageRecord['shortcut'],
                         $pageRecord['shortcut_mode'],
@@ -91,7 +91,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
         if (empty($prefix)) {
             $prefix = '/';
         }
-        return $prefix . $path;
+        return rtrim($prefix . $path, '/') . '/';
     }
 
     /**
@@ -149,7 +149,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
      */
     protected function getPathForPageRecord(array $targetPage, $targetLanguageUid)
     {
-        if ((int)$targetPage['doktype'] !== PageRepository::DOKTYPE_DEFAULT) {
+        if ((int) $targetPage['doktype'] !== PageRepository::DOKTYPE_DEFAULT) {
             return null;
         }
         $rootline = $this->getRootline($targetPage['uid']);
@@ -195,7 +195,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
     protected function insertOrRenewMapEntry($queryString, $path, $isShortcut)
     {
         $combinedHash = $this->fastHash($queryString . ':' . $path);
-        $recordExists = (bool)$this->getDatabaseConnection()->exec_SELECTcountRows('*', 'tx_autourls_map', 'combined_hash = "' . $combinedHash . '"');
+        $recordExists = (bool) $this->getDatabaseConnection()->exec_SELECTcountRows('*', 'tx_autourls_map', 'combined_hash = "' . $combinedHash . '"');
         if ($recordExists) {
             $this->getDatabaseConnection()->exec_UPDATEquery(
                 'tx_autourls_map',
