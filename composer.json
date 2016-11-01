@@ -1,6 +1,6 @@
 {
     "name": "smichaelsen/autourls",
-    "description": "Zero configuration speaking URLs for TYPO3 8",
+    "description": "Zero configuration speaking URLs for TYPO3",
     "type": "typo3-cms-extension",
     "license": "GPL-2.0+",
     "autoload": {
@@ -9,7 +9,7 @@
         }
     },
     "require": {
-        "typo3/cms-core": "^8.1"
+        "typo3/cms-core": "^7.6"
     },
     "replace": {
         "autourls": "self.version",
