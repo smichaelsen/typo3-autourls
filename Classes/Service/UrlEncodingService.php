@@ -237,7 +237,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
      */
     protected function getExpiryTimestamp():int
     {
-        if ($GLOBALS['TSFE']->no_cache || (boolean) $GLOBALS['TSFE']->page['no_cache'] || true) {
+        if ($GLOBALS['TSFE']->no_cache || (boolean) $GLOBALS['TSFE']->page['no_cache']) {
             $lifetime = 0;
         } else {
             $lifetime = 86400;
@@ -256,6 +256,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
         $charset = $GLOBALS['TYPO3_CONF_VARS']['BE']['forceCharset'] ?? 'utf-8';
         $slug = $this->getCharsetConverter()->conv_case($charset, $title, 'toLower');
         $slug = strip_tags($slug);
+        $slug = str_replace('%', '', $slug);
         $slug = preg_replace('/[ \-+_]+/', '-', $slug);
         $slug = $this->getCharsetConverter()->specCharsToASCII($charset, $slug);
         return $slug;
