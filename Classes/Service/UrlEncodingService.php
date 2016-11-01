@@ -19,6 +19,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
 
     const SUPPORTED_DOKTYPES = [
         PageRepository::DOKTYPE_DEFAULT,
+        PageRepository::DOKTYPE_SHORTCUT,
     ];
 
     /**
@@ -34,21 +35,24 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
             $urlParameters = $this->queryStringToParametersArray($queryString);
             $pathSegments = [];
             if (isset($urlParameters['L'])) {
-                if ((int)$urlParameters['L'] > 0) {
-                    $languageRecord = BackendUtility::getRecord('sys_language', (int)$urlParameters['L']);
+                if ((int) $urlParameters['L'] > 0) {
+                    $languageRecord = BackendUtility::getRecord('sys_language', (int) $urlParameters['L']);
                     if (is_array($languageRecord)) {
-                        $targetLanguageUid = (int)$urlParameters['L'];
+                        $targetLanguageUid = (int) $urlParameters['L'];
                         $pathSegments[] = $languageRecord['language_isocode'];
                     }
                 }
                 unset($urlParameters['L']);
             }
             if (isset($urlParameters['id'])) {
-                $pageRecord = BackendUtility::getRecord('pages', (int)$urlParameters['id']);
+                $pageRecord = BackendUtility::getRecord('pages', (int) $urlParameters['id']);
                 if ($targetLanguageUid > 0) {
                     $pageRecord = $this->getPageRepository()->getPageOverlay($pageRecord, $targetLanguageUid);
                 }
-                if ((int)$pageRecord['doktype'] === PageRepository::DOKTYPE_SHORTCUT) {
+                if (
+                    (int) $pageRecord['doktype'] === PageRepository::DOKTYPE_SHORTCUT
+                    && (int) $pageRecord['shortcut_mode'] === PageRepository::SHORTCUT_MODE_NONE
+                ) {
                     $pageRecord = $this->getTyposcriptFrontendController()->getPageShortcut(
                         $pageRecord['shortcut'],
                         $pageRecord['shortcut_mode'],
@@ -58,7 +62,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
                 }
                 $pagePathSegment = $this->getPathForPageRecord($pageRecord, $targetLanguageUid);
                 if ($pagePathSegment === null) {
-                    return $queryString;
+                    return '?' . $queryString;
                 }
                 if (!empty($pagePathSegment)) {
                     $pathSegments[] = $pagePathSegment;
@@ -137,7 +141,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
             ->orderBy('encoding_expires', 'DESC')
             ->setMaxResults(1)
             ->execute()->fetchColumn();
-        return $value !== false ? (string)$value : null;
+        return $value !== false ? (string) $value : null;
     }
 
     /**
@@ -147,7 +151,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
      */
     protected function getPathForPageRecord(array $targetPage, int $targetLanguageUid)
     {
-        if ((int)$targetPage['doktype'] !== PageRepository::DOKTYPE_DEFAULT) {
+        if (!in_array((int) $targetPage['doktype'], self::SUPPORTED_DOKTYPES)) {
             return null;
         }
         $rootline = $this->getRootline($targetPage['uid']);
@@ -194,7 +198,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
     {
         $combinedHash = $this->fastHash($queryString . ':' . $path);
         $queryBuilder = $this->getMapQueryBuilder();
-        $recordExists = (bool)$queryBuilder
+        $recordExists = (bool) $queryBuilder
             ->select('querystring_hash')
             ->from('tx_autourls_map')
             ->where(
