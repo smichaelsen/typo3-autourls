@@ -9,7 +9,7 @@ class ArrayUtility
      * @param array $needleArray
      * @return bool
      */
-    public static function array_has_all_keys_of_array(array $haystackArray, array $needleArray):bool
+    public static function array_has_all_keys_of_array(array $haystackArray, array $needleArray)
     {
         if (!self::array_all_keys_exist($haystackArray, array_keys($needleArray))) {
             return false;
@@ -29,7 +29,7 @@ class ArrayUtility
      * @param array $keys
      * @return bool
      */
-    protected static function array_all_keys_exist(array $array, array $keys):bool
+    protected static function array_all_keys_exist(array $array, array $keys)
     {
         foreach ($keys as $key) {
             if (!array_key_exists($key, $array)) {

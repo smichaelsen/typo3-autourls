@@ -1,9 +1,7 @@
 <?php
 namespace Smichaelsen\Autourls\Service;
 
-use TYPO3\CMS\Core\Database\ConnectionPool;
-use TYPO3\CMS\Core\Database\Query\QueryBuilder;
-use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Core\Database\DatabaseConnection;
 
 abstract class AbstractUrlMapService
 {
@@ -16,7 +14,7 @@ abstract class AbstractUrlMapService
      * @param string $string
      * @return int
      */
-    protected function fastHash(string $string):int
+    protected function fastHash($string)
     {
         return (int)sprintf('%u', crc32($string));
     }
@@ -25,7 +23,7 @@ abstract class AbstractUrlMapService
      * @param string $queryString
      * @return array
      */
-    protected function queryStringToParametersArray(string $queryString):array
+    protected function queryStringToParametersArray($queryString)
     {
         parse_str($queryString, $urlParameters);
         return $urlParameters;
@@ -35,17 +33,17 @@ abstract class AbstractUrlMapService
      * @param array $urlParameters
      * @return string
      */
-    protected function parametersArrayToQueryString(array $urlParameters):string
+    protected function parametersArrayToQueryString(array $urlParameters)
     {
         return http_build_query($urlParameters);
     }
 
     /**
-     * @return QueryBuilder
+     * @return DatabaseConnection
      */
-    protected function getMapQueryBuilder():QueryBuilder
+    protected function getDatabaseConnection()
     {
-        return GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('tx_autourls_map');
+        return $GLOBALS['TYPO3_DB'];
     }
 
 }

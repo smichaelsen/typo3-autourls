@@ -36,7 +36,7 @@ class ExtensionParameterRegistry
      * @param string $queryString The queryString you want to replace.
      * @param string $tableName
      */
-    public static function register(string $routeName, string $queryString, string $tableName = '')
+    public static function register($routeName, $queryString, $tableName = '')
     {
         self::$registry[$routeName] = [
             'queryString' => urldecode($queryString),
@@ -47,7 +47,7 @@ class ExtensionParameterRegistry
     /**
      * @return array
      */
-    public static function get():array
+    public static function get()
     {
         return self::$registry;
     }

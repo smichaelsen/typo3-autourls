@@ -10,7 +10,7 @@ class UrlDecodingService extends AbstractUrlMapService implements SingletonInter
      * @param string $pagePath
      * @return array|null
      */
-    public function decodeFromPagePath(string $pagePath)
+    public function decodeFromPagePath($pagePath)
     {
         $queryString = $this->findQueryStringForPathInMap($pagePath);
         if ($queryString === null) {
@@ -23,18 +23,17 @@ class UrlDecodingService extends AbstractUrlMapService implements SingletonInter
      * @param string $path
      * @return string|null
      */
-    private function findQueryStringForPathInMap(string $path)
+    private function findQueryStringForPathInMap($path)
     {
-        $queryBuilder = $this->getMapQueryBuilder();
-        $value = $queryBuilder
-            ->select('querystring')
-            ->from('tx_autourls_map')
-            ->where(
-                $queryBuilder->expr()->eq('path_hash', $this->fastHash($path)),
-                $queryBuilder->expr()->eq('is_shortcut', 0)
-            )
-            ->execute()->fetchColumn();
-        return $value !== false ? (string)$value : null;
+        $record = $this->getDatabaseConnection()->exec_SELECTgetSingleRow(
+            'querystring',
+            'tx_autourls_map',
+            'path_hash = "' . $this->fastHash($path) . '" AND is_shortcut = 0'
+        );
+        if (is_array($record) && !empty($record['querystring'])) {
+            return $record['querystring'];
+        }
+        return null;
     }
 
 }

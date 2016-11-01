@@ -25,7 +25,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
      * @param string $queryString
      * @return string
      */
-    public function encodeFromQueryString(string $queryString):string
+    public function encodeFromQueryString($queryString)
     {
         $isShortcut = false;
         $targetLanguageUid = 0;
@@ -73,7 +73,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
                         $urlParameters,
                         $pathSegments,
                         $this->queryStringToParametersArray($routeConfiguration['queryString']),
-                        $routeConfiguration['tableName'] ?? null,
+                        empty($routeConfiguration['tableName']) ? null : $routeConfiguration['tableName'],
                         $targetLanguageUid
                     );
                 }
@@ -87,7 +87,10 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
             }
             $this->insertOrRenewMapEntry($queryString, $path, $isShortcut);
         }
-        $prefix = $encodedPath = $this->getTemplateService()->setup['config.']['absRefPrefix'] ?? '/';
+        $prefix = $this->getTemplateService()->setup['config.']['absRefPrefix'];
+        if (empty($prefix)) {
+            $prefix = '/';
+        }
         return $prefix . $path;
     }
 
@@ -95,7 +98,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
      * @param array $parametersArray
      * @return string
      */
-    public function encodeFromParametersArray(array $parametersArray):string
+    public function encodeFromParametersArray(array $parametersArray)
     {
         return $this->encodeFromQueryString($this->parametersArrayToQueryString($parametersArray));
     }
@@ -103,14 +106,13 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
     /**
      * @param string $queryString
      */
-    public function invalidateEncodingCacheFromQueryString(string $queryString)
+    public function invalidateEncodingCacheFromQueryString($queryString)
     {
-        $queryBuilder = $this->getMapQueryBuilder();
-        $queryBuilder
-            ->update('tx_autourls_map')
-            ->where($queryBuilder->expr()->eq('querystring_hash', $this->fastHash($queryString)))
-            ->set('encoding_expires', 0)
-            ->execute();
+        $this->getDatabaseConnection()->exec_UPDATEquery(
+            'tx_autourls_map',
+            'querystring_hash = "' . $this->fastHash($queryString) . '"',
+            ['encoding_expires' => 0]
+        );
     }
 
     /**
@@ -125,20 +127,19 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
      * @param string $queryString
      * @return string|null
      */
-    protected function findPathForQueryStringInMap(string $queryString)
+    protected function findPathForQueryStringInMap($queryString)
     {
-        $queryBuilder = $this->getMapQueryBuilder();
-        $value = $queryBuilder
-            ->select('path')
-            ->from('tx_autourls_map')
-            ->where(
-                $queryBuilder->expr()->eq('querystring_hash', $this->fastHash($queryString)),
-                $queryBuilder->expr()->gt('encoding_expires', $GLOBALS['EXEC_TIME'])
-            )
-            ->orderBy('encoding_expires', 'DESC')
-            ->setMaxResults(1)
-            ->execute()->fetchColumn();
-        return $value !== false ? (string)$value : null;
+        $record = $this->getDatabaseConnection()->exec_SELECTgetSingleRow(
+            'querystring',
+            'tx_autourls_map',
+            'querystring_hash = "' . $this->fastHash($queryString) . ' AND encoding_expires > ' . (int) $GLOBALS['EXEC_TIME'],
+            '',
+            'encoding_expires DESC'
+        );
+        if (is_array($record) && !empty($record['path'])) {
+            return $record['path'];
+        }
+        return null;
     }
 
     /**
@@ -146,7 +147,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
      * @param int $targetLanguageUid
      * @return null|string
      */
-    protected function getPathForPageRecord(array $targetPage, int $targetLanguageUid)
+    protected function getPathForPageRecord(array $targetPage, $targetLanguageUid)
     {
         if ((int)$targetPage['doktype'] !== PageRepository::DOKTYPE_DEFAULT) {
             return null;
@@ -178,7 +179,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
      * @param int $id
      * @return array
      */
-    protected function getRootline(int $id):array
+    protected function getRootline($id)
     {
         $rootline = GeneralUtility::makeInstance(RootlineUtility::class, $id, '', $this->getPageRepository());
         $rootline->purgeCaches();
@@ -191,30 +192,25 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
      * @param string $path
      * @param bool $isShortcut
      */
-    protected function insertOrRenewMapEntry(string $queryString, string $path, bool $isShortcut)
+    protected function insertOrRenewMapEntry($queryString, $path, $isShortcut)
     {
         $combinedHash = $this->fastHash($queryString . ':' . $path);
-        $queryBuilder = $this->getMapQueryBuilder();
-        $recordExists = (bool)$queryBuilder
-            ->select('querystring_hash')
-            ->from('tx_autourls_map')
-            ->where(
-                $queryBuilder->expr()->eq('combined_hash', $combinedHash)
-            )
-            ->execute()->fetchColumn();
+        $recordExists = (bool)$this->getDatabaseConnection()->exec_SELECTcountRows('*', 'tx_autourls_map', 'combined_hash = "' . $combinedHash . '"');
         if ($recordExists) {
-            $queryBuilder
-                ->update('tx_autourls_map')
-                ->where($queryBuilder->expr()->eq('combined_hash', $combinedHash))
-                ->set('encoding_expires', $this->getExpiryTimestamp())
-                ->set('path', $path)
-                ->set('path_hash', $this->fastHash($path))
-                ->set('is_shortcut', $isShortcut)
-                ->execute();
+            $this->getDatabaseConnection()->exec_UPDATEquery(
+                'tx_autourls_map',
+                'combined_hash = "' . $combinedHash . '"',
+                [
+                    'encoding_expires' => $this->getExpiryTimestamp(),
+                    'path' => $path,
+                    'path_hash' => $this->fastHash($path),
+                    'is_shortcut' => $isShortcut,
+                ]
+            );
         } else {
-            $queryBuilder
-                ->insert('tx_autourls_map')
-                ->values([
+            $this->getDatabaseConnection()->exec_INSERTquery(
+                'tx_autourls_map',
+                [
                     'combined_hash' => $combinedHash,
                     'querystring_hash' => $this->fastHash($queryString),
                     'querystring' => $queryString,
@@ -222,8 +218,8 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
                     'path_hash' => $this->fastHash($path),
                     'encoding_expires' => $this->getExpiryTimestamp(),
                     'is_shortcut' => $isShortcut,
-                ])
-                ->execute();
+                ]
+            );
         }
     }
 
@@ -232,7 +228,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
      *
      * @return int
      */
-    protected function getExpiryTimestamp():int
+    protected function getExpiryTimestamp()
     {
         $lifetime = 86400;
         $variance = .25;
@@ -244,9 +240,9 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
      * @param string $title
      * @return string
      */
-    protected function slugify(string $title):string
+    protected function slugify($title)
     {
-        $charset = $GLOBALS['TYPO3_CONF_VARS']['BE']['forceCharset'] ?? 'utf-8';
+        $charset = empty($GLOBALS['TYPO3_CONF_VARS']['BE']['forceCharset']) ? 'utf-8' : $GLOBALS['TYPO3_CONF_VARS']['BE']['forceCharset'];
         $slug = $this->getCharsetConverter()->conv_case($charset, $title, 'toLower');
         $slug = strip_tags($slug);
         $slug = preg_replace('/[ \-+_]+/', '-', $slug);
@@ -262,7 +258,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
      * @param int $targetLanguageUid
      * @throws \Exception
      */
-    protected function replaceExtensionParameters(array &$urlParameters, array &$pathSegments, array $extensionParameters, string $extensionTableName = null, int $targetLanguageUid = 0)
+    protected function replaceExtensionParameters(array &$urlParameters, array &$pathSegments, array $extensionParameters, $extensionTableName = null, $targetLanguageUid = 0)
     {
         foreach ($extensionParameters as $extensionParameterName => $extensionParameterValue) {
             if ($extensionParameterValue === $urlParameters[$extensionParameterName]) {
@@ -302,7 +298,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
     /**
      * @return CharsetConverter
      */
-    protected function getCharsetConverter():CharsetConverter
+    protected function getCharsetConverter()
     {
         return GeneralUtility::makeInstance(CharsetConverter::class);
     }
@@ -310,7 +306,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
     /**
      * @return PageRepository
      */
-    protected function getPageRepository():PageRepository
+    protected function getPageRepository()
     {
         return $this->getTyposcriptFrontendController()->sys_page;
     }
@@ -318,7 +314,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
     /**
      * @return TemplateService
      */
-    protected function getTemplateService():TemplateService
+    protected function getTemplateService()
     {
         return $this->getTyposcriptFrontendController()->tmpl;
     }
@@ -326,11 +322,11 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
     /**
      * @return TypoScriptFrontendController
      */
-    protected function getTyposcriptFrontendController():TypoScriptFrontendController
+    protected function getTyposcriptFrontendController()
     {
         static $typoscriptFrontendController;
         if (!$typoscriptFrontendController instanceof TypoScriptFrontendController) {
-            $typoscriptFrontendController = $GLOBALS['TSFE'] ?? $this->createTsfeInstance();
+            $typoscriptFrontendController = empty($GLOBALS['TSFE']) ? $this->createTsfeInstance() : $GLOBALS['TSFE'];
         }
         return $typoscriptFrontendController;
     }
@@ -340,7 +336,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
      * @param int $typeNum
      * @return TypoScriptFrontendController
      */
-    protected function createTsfeInstance(int $id = 1, int $typeNum = 0):TypoScriptFrontendController
+    protected function createTsfeInstance($id = 1, $typeNum = 0)
     {
         if (!is_object($GLOBALS['TT'])) {
             $GLOBALS['TT'] = new TimeTracker();

@@ -15,7 +15,7 @@ class DataHandlerHook
      * @param array $fieldArray
      * @param DataHandler $dataHandler
      */
-    public function processDatamap_afterDatabaseOperations(string $status, string $table, string $id, array $fieldArray, DataHandler $dataHandler)
+    public function processDatamap_afterDatabaseOperations($status, $table, $id, array $fieldArray, DataHandler $dataHandler)
     {
         if (!$this->tableIsSupported($table)) {
             return;
@@ -33,7 +33,7 @@ class DataHandlerHook
      * @param string $table
      * @param int $id
      */
-    protected function invalidateEncodingCache(string $table, int $id)
+    protected function invalidateEncodingCache($table, $id)
     {
         if ($table === 'pages') {
             $this->getUrlEncodingService()->invalidateEncodingCacheFromParametersArray(['id' => $id]);
@@ -44,7 +44,7 @@ class DataHandlerHook
      * @param string $table
      * @param int $id
      */
-    protected function warmUpEncodingCache(string $table, int $id)
+    protected function warmUpEncodingCache($table, $id)
     {
         // trigger encoding to warm up the cache
         if ($table === 'pages') {
@@ -56,7 +56,7 @@ class DataHandlerHook
      * @param string $tableName
      * @return bool
      */
-    protected function tableIsSupported(string $tableName):bool
+    protected function tableIsSupported($tableName)
     {
         return $tableName === 'pages';
     }
@@ -64,7 +64,7 @@ class DataHandlerHook
     /**
      * @return UrlEncodingService
      */
-    protected function getUrlEncodingService():UrlEncodingService
+    protected function getUrlEncodingService()
     {
         return GeneralUtility::makeInstance(UrlEncodingService::class);
     }
