@@ -68,7 +68,6 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
             foreach (ExtensionParameterRegistry::get() as $routeName => $routeConfiguration) {
                 $extensionQueryParameters = $this->queryStringToParametersArray($routeConfiguration['queryString']);
                 if (ArrayUtility::array_has_all_keys_of_array($urlParameters, $extensionQueryParameters)) {
-                    $pathSegments[] = $this->slugify($routeName);
                     $this->replaceExtensionParameters(
                         $urlParameters,
                         $pathSegments,
