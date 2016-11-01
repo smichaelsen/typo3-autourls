@@ -229,9 +229,13 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
      */
     protected function getExpiryTimestamp()
     {
-        $lifetime = 86400;
-        $variance = .25;
-        $lifetime = rand((1 - $variance) * $lifetime, (1 + $variance) * $lifetime);
+        if ($GLOBALS['TSFE']->no_cache || (boolean) $GLOBALS['TSFE']->page['no_cache'] || true) {
+            $lifetime = 0;
+        } else {
+            $lifetime = 86400;
+            $variance = .25;
+            $lifetime = rand((1 - $variance) * $lifetime, (1 + $variance) * $lifetime);
+        }
         return $GLOBALS['EXEC_TIME'] + $lifetime;
     }
 
