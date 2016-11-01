@@ -16,6 +16,7 @@ class UrlDecodingService extends AbstractUrlMapService implements SingletonInter
         if ($queryString === null) {
             return null;
         }
+        $_SERVER['QUERY_STRING'] = $queryString;
         return $this->queryStringToParametersArray($queryString);
     }
 
