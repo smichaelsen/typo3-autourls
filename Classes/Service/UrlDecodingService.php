@@ -30,7 +30,7 @@ class UrlDecodingService extends AbstractUrlMapService implements SingletonInter
         $record = $this->getDatabaseConnection()->exec_SELECTgetSingleRow(
             'querystring',
             'tx_autourls_map JOIN sys_domain ON (tx_autourls_map.rootpage_id = sys_domain.pid) ',
-            'tx_autourls_map.path_hash = "' . $this->fastHash(rtrim($path, '/')) . '" AND tx_autourls_map.is_shortcut = 0 AND sys_domain.hidden = 0 AND sys_domain.domainName = ' . $this->getDatabaseConnection()->fullQuoteStr(GeneralUtility::getIndpEnv('HTTP_HOST'), 'sys_domain')
+            'tx_autourls_map.path = ' . $this->getDatabaseConnection()->fullQuoteStr(rtrim($path, '/'), 'tx_autourls_map') . ' AND tx_autourls_map.is_shortcut = 0 AND sys_domain.hidden = 0 AND sys_domain.domainName = ' . $this->getDatabaseConnection()->fullQuoteStr(GeneralUtility::getIndpEnv('HTTP_HOST'), 'sys_domain')
         );
         if (is_array($record) && !empty($record['querystring'])) {
             return $record['querystring'];

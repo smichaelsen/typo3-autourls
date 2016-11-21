@@ -113,7 +113,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
     {
         $this->getDatabaseConnection()->exec_UPDATEquery(
             'tx_autourls_map',
-            'querystring_hash = "' . $this->fastHash($queryString) . '"',
+            'querystring = ' . $this->getDatabaseConnection()->fullQuoteStr($queryString, 'tx_autourls_map'),
             ['encoding_expires' => 0]
         );
     }
@@ -135,7 +135,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
         $record = $this->getDatabaseConnection()->exec_SELECTgetSingleRow(
             'querystring',
             'tx_autourls_map',
-            'querystring_hash = "' . $this->fastHash($queryString) . ' AND encoding_expires > ' . (int) $GLOBALS['EXEC_TIME'],
+            'querystring = ' . $this->getDatabaseConnection()->fullQuoteStr($queryString, 'tx_autourls_map') . ' AND encoding_expires > ' . (int) $GLOBALS['EXEC_TIME'],
             '',
             'encoding_expires DESC'
         );
@@ -212,7 +212,6 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
                 [
                     'encoding_expires' => $this->getExpiryTimestamp(),
                     'path' => $path,
-                    'path_hash' => $this->fastHash($path),
                     'is_shortcut' => $isShortcut,
                 ]
             );
@@ -224,8 +223,6 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
                     'encoding_expires' => $this->getExpiryTimestamp(),
                     'is_shortcut' => $isShortcut,
                     'path' => $path,
-                    'path_hash' => $this->fastHash($path),
-                    'querystring_hash' => $this->fastHash($queryString),
                     'querystring' => $queryString,
                     'rootpage_id' => $rootPageUid,
                 ]
