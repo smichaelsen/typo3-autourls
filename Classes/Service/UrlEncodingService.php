@@ -203,31 +203,22 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
     {
         $urlParameters = $this->queryStringToParametersArray($queryString);
         $rootPageUid = $this->getRootline($urlParameters['id'])[0]['uid'];
-        $combinedHash = $this->fastHash($queryString . ':' . $path . ':' . $rootPageUid);
-        $recordExists = (bool) $this->getDatabaseConnection()->exec_SELECTcountRows('*', 'tx_autourls_map', 'combined_hash = "' . $combinedHash . '"');
-        if ($recordExists) {
-            $this->getDatabaseConnection()->exec_UPDATEquery(
-                'tx_autourls_map',
-                'combined_hash = "' . $combinedHash . '"',
-                [
-                    'encoding_expires' => $this->getExpiryTimestamp(),
-                    'path' => $path,
-                    'is_shortcut' => $isShortcut,
-                ]
-            );
-        } else {
-            $this->getDatabaseConnection()->exec_INSERTquery(
-                'tx_autourls_map',
-                [
-                    'combined_hash' => $combinedHash,
-                    'encoding_expires' => $this->getExpiryTimestamp(),
-                    'is_shortcut' => $isShortcut,
-                    'path' => $path,
-                    'querystring' => $queryString,
-                    'rootpage_id' => $rootPageUid,
-                ]
-            );
-        }
+        $query = sprintf(
+            '
+            INSERT INTO
+                tx_autourls_map (encoding_expires, is_shortcut, path, querystring, rootpage_id)
+            VALUES
+                (%1$d, %2$d, %3$s, %4$s, %5$d)
+            ON DUPLICATE KEY UPDATE
+                encoding_expires = %1$d
+            ',
+            $this->getExpiryTimestamp(),
+            $isShortcut,
+            $this->getDatabaseConnection()->fullQuoteStr($path, 'tx_autourls_map'),
+            $this->getDatabaseConnection()->fullQuoteStr($queryString, 'tx_autourls_map'),
+            $rootPageUid
+        );
+        $this->getDatabaseConnection()->sql_query($query);
     }
 
     /**

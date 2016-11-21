@@ -1,12 +1,8 @@
-CREATE TABLE tx_autourls_map (
-	combined_hash int(11) unsigned NOT NULL default '0',
-	querystring text,
-	encoding_expires int(11) unsigned NOT NULL default '0',
-	path text,
-    rootpage_id int(11) unsigned NOT NULL default '0',
-	is_shortcut tinyint(4) unsigned NOT NULL default '0',
-
-	PRIMARY KEY (combined_hash),
-    KEY querystring (querystring(255)),
-    KEY path (path(255))
-);
+CREATE TABLE `tx_autourls_map` (
+    `querystring` text,
+    `encoding_expires` int(11) unsigned NOT NULL DEFAULT '0',
+    `path` text,
+    `is_shortcut` tinyint(4) unsigned NOT NULL DEFAULT '0',
+    `rootpage_id` int(11) unsigned NOT NULL DEFAULT '0',
+    UNIQUE KEY `combination_key` (`querystring`(255),`path`(255),`rootpage_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
