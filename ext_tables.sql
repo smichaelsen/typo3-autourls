@@ -5,6 +5,7 @@ CREATE TABLE tx_autourls_map (
 	encoding_expires int(11) unsigned NOT NULL default '0',
 	path text,
 	path_hash int(11) unsigned NOT NULL default '0',
+    rootpage_id int(11) unsigned NOT NULL default '0',
 	is_shortcut tinyint(4) unsigned NOT NULL default '0',
 
 	PRIMARY KEY (combined_hash),

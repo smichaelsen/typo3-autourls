@@ -184,10 +184,14 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
      */
     protected function getRootline($id)
     {
-        $rootline = GeneralUtility::makeInstance(RootlineUtility::class, $id, '', $this->getPageRepository());
-        $rootline->purgeCaches();
-        GeneralUtility::makeInstance(CacheManager::class)->getCache('cache_rootline')->flush();
-        return $rootline->get();
+        static $rootlines = [];
+        if (!isset($rootlines[$id])) {
+            $rootline = GeneralUtility::makeInstance(RootlineUtility::class, $id, '', $this->getPageRepository());
+            $rootline->purgeCaches();
+            GeneralUtility::makeInstance(CacheManager::class)->getCache('cache_rootline')->flush();
+            $rootlines[$id] = $rootline->get();
+        }
+        return $rootlines[$id];
     }
 
     /**
@@ -197,7 +201,9 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
      */
     protected function insertOrRenewMapEntry($queryString, $path, $isShortcut)
     {
-        $combinedHash = $this->fastHash($queryString . ':' . $path);
+        $urlParameters = $this->queryStringToParametersArray($queryString);
+        $rootPageUid = $this->getRootline($urlParameters['id'])[0]['uid'];
+        $combinedHash = $this->fastHash($queryString . ':' . $path . ':' . $rootPageUid);
         $recordExists = (bool) $this->getDatabaseConnection()->exec_SELECTcountRows('*', 'tx_autourls_map', 'combined_hash = "' . $combinedHash . '"');
         if ($recordExists) {
             $this->getDatabaseConnection()->exec_UPDATEquery(
@@ -215,12 +221,13 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
                 'tx_autourls_map',
                 [
                     'combined_hash' => $combinedHash,
-                    'querystring_hash' => $this->fastHash($queryString),
-                    'querystring' => $queryString,
-                    'path' => $path,
-                    'path_hash' => $this->fastHash($path),
                     'encoding_expires' => $this->getExpiryTimestamp(),
                     'is_shortcut' => $isShortcut,
+                    'path' => $path,
+                    'path_hash' => $this->fastHash($path),
+                    'querystring_hash' => $this->fastHash($queryString),
+                    'querystring' => $queryString,
+                    'rootpage_id' => $rootPageUid,
                 ]
             );
         }

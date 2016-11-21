@@ -2,6 +2,7 @@
 namespace Smichaelsen\Autourls\Service;
 
 use TYPO3\CMS\Core\SingletonInterface;
+use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 class UrlDecodingService extends AbstractUrlMapService implements SingletonInterface
 {
@@ -28,8 +29,8 @@ class UrlDecodingService extends AbstractUrlMapService implements SingletonInter
     {
         $record = $this->getDatabaseConnection()->exec_SELECTgetSingleRow(
             'querystring',
-            'tx_autourls_map',
-            'path_hash = "' . $this->fastHash(rtrim($path, '/')) . '" AND is_shortcut = 0'
+            'tx_autourls_map JOIN sys_domain ON (tx_autourls_map.rootpage_id = sys_domain.pid) ',
+            'tx_autourls_map.path_hash = "' . $this->fastHash(rtrim($path, '/')) . '" AND tx_autourls_map.is_shortcut = 0 AND sys_domain.hidden = 0 AND sys_domain.domainName = ' . $this->getDatabaseConnection()->fullQuoteStr(GeneralUtility::getIndpEnv('HTTP_HOST'), 'sys_domain')
         );
         if (is_array($record) && !empty($record['querystring'])) {
             return $record['querystring'];
