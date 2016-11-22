@@ -88,7 +88,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
             $this->insertOrRenewMapEntry($queryString, $path, $isShortcut);
         }
         $prefix = $encodedPath = $this->getTemplateService()->setup['config.']['absRefPrefix'] ?? '/';
-        return $prefix . $path;
+        return rtrim($prefix . $path, '/') . '/';
     }
 
     /**
