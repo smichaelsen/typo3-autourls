@@ -16,10 +16,19 @@ No. `autourls` offers only limited functionality and is no match to `realurl` in
 
 ### Okay, then what does it do?
 
-It just creates a speaking path for each page based on its rootline. So the rootline "Service > About us" results in the path `/service/about-us`. It respects the `nav_title` field of `pages` and the `config.absRefPrefix` TypoScript setting.
+It just creates a speaking path for each page based on its rootline. So the rootline "Service > About us" results in the path `/service/about-us`.
 
-* After renaming a page the "old" url will still be accessible.
+* It respects the `nav_title` field of `pages`.
+* It respects the `config.absRefPrefix` TypoScript setting.
 * Shortcut pages are handled correctly (their path is the one from their target page, just like in realurl)
+
+### Caching and Expiry
+
+* For each query string the resulting speaking path will be cached in the database and will be assigned an expiry date of about one day.
+* After expiration the speaking path will be created again, so that renamed record names etc will be respected.
+* "Old" speaking paths (which are expired) will remain accessible.
+* If `config.no_cache = 1` speaking paths will immediately expire, so they will be regenerated on every page load.
+* If you need to expire a path manually, don't clear the whole database table! Go to `tx_autourls_map` and set `encoding_expires` to 0 for the desired record(s).
 
 ### What about extension parameters?
 
