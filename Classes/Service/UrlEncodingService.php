@@ -204,38 +204,21 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
         $urlParameters = $this->queryStringToParametersArray($queryString);
         $rootPageUid = $this->getRootline((int)$urlParameters['id'])[0]['uid'];
         $queryBuilder = $this->getMapQueryBuilder();
-        $recordExists = (bool) $queryBuilder
-            ->select('encoding_expires')
-            ->from('tx_autourls_map')
-            ->where(
-                $queryBuilder->expr()->eq('querystring', $queryBuilder->createNamedParameter($queryString)),
-                $queryBuilder->expr()->eq('path', $queryBuilder->createNamedParameter($path)),
-                $queryBuilder->expr()->eq('rootpage_id', $rootPageUid)
-            )
-            ->execute()->fetchColumn();
-        if ($recordExists) {
-            $queryBuilder
-                ->update('tx_autourls_map')
-                ->where(
-                    $queryBuilder->expr()->eq('querystring', $queryBuilder->createNamedParameter($queryString)),
-                    $queryBuilder->expr()->eq('path', $queryBuilder->createNamedParameter($path)),
-                    $queryBuilder->expr()->eq('rootpage_id', $rootPageUid)
-                )
-                ->set('encoding_expires', $this->getExpiryTimestamp())
-                ->set('is_shortcut', $isShortcut)
-                ->execute();
-        } else {
-            $queryBuilder
-                ->insert('tx_autourls_map')
-                ->values([
-                    'querystring' => $queryString,
-                    'path' => $path,
-                    'encoding_expires' => $this->getExpiryTimestamp(),
-                    'is_shortcut' => $isShortcut,
-                    'rootpage_id' => $rootPageUid,
-                ])
-                ->execute();
-        }
+        $queryBuilder->delete('tx_autourls_map')->where(
+            $queryBuilder->expr()->eq('querystring', $queryBuilder->createNamedParameter($queryString)),
+            $queryBuilder->expr()->eq('path', $queryBuilder->createNamedParameter($path)),
+            $queryBuilder->expr()->eq('rootpage_id', $rootPageUid)
+        )->execute();
+        $queryBuilder
+            ->insert('tx_autourls_map')
+            ->values([
+                'querystring' => $queryString,
+                'path' => $path,
+                'encoding_expires' => $this->getExpiryTimestamp(),
+                'is_shortcut' => $isShortcut,
+                'rootpage_id' => $rootPageUid,
+            ])
+            ->execute();
     }
 
     /**
