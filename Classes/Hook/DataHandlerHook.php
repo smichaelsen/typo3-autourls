@@ -1,5 +1,5 @@
 <?php
-declare(strict_types=1);
+declare(strict_types = 1);
 namespace Smichaelsen\Autourls\Hook;
 
 use Smichaelsen\Autourls\Service\UrlEncodingService;
@@ -22,7 +22,9 @@ class DataHandlerHook
             return;
         }
         if (!is_numeric($id)) {
-            $id = (int)$dataHandler->substNEWwithIDs[$id];
+            $id = (int) $dataHandler->substNEWwithIDs[$id];
+        } else {
+            $id = (int) $id;
         }
         if ($status === 'update') {
             $this->invalidateEncodingCache($table, $id);
@@ -57,7 +59,7 @@ class DataHandlerHook
      * @param string $tableName
      * @return bool
      */
-    protected function tableIsSupported(string $tableName):bool
+    protected function tableIsSupported(string $tableName): bool
     {
         return $tableName === 'pages';
     }
@@ -65,7 +67,7 @@ class DataHandlerHook
     /**
      * @return UrlEncodingService
      */
-    protected function getUrlEncodingService():UrlEncodingService
+    protected function getUrlEncodingService(): UrlEncodingService
     {
         return GeneralUtility::makeInstance(UrlEncodingService::class);
     }

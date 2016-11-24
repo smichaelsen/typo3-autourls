@@ -29,11 +29,17 @@ class UrlDecodingService extends AbstractUrlMapService implements SingletonInter
     {
         $queryBuilder = $this->getMapQueryBuilder();
         $value = $queryBuilder
-            ->select('querystring')
+            ->select('tx_autourls_map.querystring')
             ->from('tx_autourls_map')
+            ->join(
+                'tx_autourls_map',
+                'sys_domain',
+                'sys_domain',
+                $queryBuilder->expr()->eq('tx_autourls_map.rootpage_id', 'sys_domain.pid')
+            )
             ->where(
-                $queryBuilder->expr()->eq('path', $queryBuilder->createNamedParameter(rtrim($path, '/'))),
-                $queryBuilder->expr()->eq('is_shortcut', 0)
+                $queryBuilder->expr()->eq('tx_autourls_map.path', $queryBuilder->createNamedParameter(rtrim($path, '/'))),
+                $queryBuilder->expr()->eq('tx_autourls_map.is_shortcut', 0)
             )
             ->execute()->fetchColumn();
         return $value !== false ? (string)$value : null;

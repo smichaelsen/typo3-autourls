@@ -112,7 +112,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
         $queryBuilder = $this->getMapQueryBuilder();
         $queryBuilder
             ->update('tx_autourls_map')
-            ->where($queryBuilder->expr()->eq('querystring', $queryString))
+            ->where($queryBuilder->expr()->eq('querystring', $queryBuilder->createNamedParameter($queryString)))
             ->set('encoding_expires', 0)
             ->execute();
     }
@@ -184,10 +184,14 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
      */
     protected function getRootline(int $id): array
     {
-        $rootline = GeneralUtility::makeInstance(RootlineUtility::class, $id, '', $this->getPageRepository());
-        $rootline->purgeCaches();
-        GeneralUtility::makeInstance(CacheManager::class)->getCache('cache_rootline')->flush();
-        return $rootline->get();
+        static $rootlines = [];
+        if (!isset($rootlines[$id])) {
+            $rootline = GeneralUtility::makeInstance(RootlineUtility::class, $id, '', $this->getPageRepository());
+            $rootline->purgeCaches();
+            GeneralUtility::makeInstance(CacheManager::class)->getCache('cache_rootline')->flush();
+            $rootlines[$id] = $rootline->get();
+        }
+        return $rootlines[$id];
     }
 
     /**
@@ -197,32 +201,38 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
      */
     protected function insertOrRenewMapEntry(string $queryString, string $path, bool $isShortcut)
     {
-        $combinedHash = $this->fastHash($queryString . ':' . $path);
+        $urlParameters = $this->queryStringToParametersArray($queryString);
+        $rootPageUid = $this->getRootline((int)$urlParameters['id'])[0]['uid'];
         $queryBuilder = $this->getMapQueryBuilder();
         $recordExists = (bool) $queryBuilder
-            ->select('combined_hash')
+            ->select('encoding_expires')
             ->from('tx_autourls_map')
             ->where(
-                $queryBuilder->expr()->eq('combined_hash', $queryBuilder->createNamedParameter($combinedHash))
+                $queryBuilder->expr()->eq('querystring', $queryBuilder->createNamedParameter($queryString)),
+                $queryBuilder->expr()->eq('path', $queryBuilder->createNamedParameter($path)),
+                $queryBuilder->expr()->eq('rootpage_id', $rootPageUid)
             )
             ->execute()->fetchColumn();
         if ($recordExists) {
             $queryBuilder
                 ->update('tx_autourls_map')
-                ->where($queryBuilder->expr()->eq('combined_hash', $combinedHash))
+                ->where(
+                    $queryBuilder->expr()->eq('querystring', $queryBuilder->createNamedParameter($queryString)),
+                    $queryBuilder->expr()->eq('path', $queryBuilder->createNamedParameter($path)),
+                    $queryBuilder->expr()->eq('rootpage_id', $rootPageUid)
+                )
                 ->set('encoding_expires', $this->getExpiryTimestamp())
-                ->set('path', $path)
                 ->set('is_shortcut', $isShortcut)
                 ->execute();
         } else {
             $queryBuilder
                 ->insert('tx_autourls_map')
                 ->values([
-                    'combined_hash' => $combinedHash,
                     'querystring' => $queryString,
                     'path' => $path,
                     'encoding_expires' => $this->getExpiryTimestamp(),
                     'is_shortcut' => $isShortcut,
+                    'rootpage_id' => $rootPageUid,
                 ])
                 ->execute();
         }
