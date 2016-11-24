@@ -264,7 +264,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
         $charset = $GLOBALS['TYPO3_CONF_VARS']['BE']['forceCharset'] ?? 'utf-8';
         $slug = $this->getCharsetConverter()->conv_case($charset, $title, 'toLower');
         $slug = strip_tags($slug);
-        $slug = str_replace('%', '', $slug);
+        $slug = str_replace(['%', '?', '!', '#'], '', $slug);
         $slug = preg_replace('/[ \-+_]+/', '-', $slug);
         $slug = $this->getCharsetConverter()->specCharsToASCII($charset, $slug);
         return $slug;
