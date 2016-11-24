@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 namespace Smichaelsen\Autourls\Hook;
 
 use Smichaelsen\Autourls\Service\UrlDecodingService;

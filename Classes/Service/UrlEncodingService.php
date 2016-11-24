@@ -1,4 +1,5 @@
 <?php
+declare(strict_types = 1);
 namespace Smichaelsen\Autourls\Service;
 
 use Smichaelsen\Autourls\ArrayUtility;
@@ -26,7 +27,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
      * @param string $queryString
      * @return string
      */
-    public function encodeFromQueryString(string $queryString):string
+    public function encodeFromQueryString(string $queryString): string
     {
         $isShortcut = false;
         $targetLanguageUid = 0;
@@ -98,7 +99,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
      * @param array $parametersArray
      * @return string
      */
-    public function encodeFromParametersArray(array $parametersArray):string
+    public function encodeFromParametersArray(array $parametersArray): string
     {
         return $this->encodeFromQueryString($this->parametersArrayToQueryString($parametersArray));
     }
@@ -111,7 +112,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
         $queryBuilder = $this->getMapQueryBuilder();
         $queryBuilder
             ->update('tx_autourls_map')
-            ->where($queryBuilder->expr()->eq('querystring_hash', $this->fastHash($queryString)))
+            ->where($queryBuilder->expr()->eq('querystring', $queryString))
             ->set('encoding_expires', 0)
             ->execute();
     }
@@ -135,7 +136,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
             ->select('path')
             ->from('tx_autourls_map')
             ->where(
-                $queryBuilder->expr()->eq('querystring_hash', $this->fastHash($queryString)),
+                $queryBuilder->expr()->eq('querystring', $queryBuilder->createNamedParameter($queryString)),
                 $queryBuilder->expr()->gt('encoding_expires', $GLOBALS['EXEC_TIME'])
             )
             ->orderBy('encoding_expires', 'DESC')
@@ -181,7 +182,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
      * @param int $id
      * @return array
      */
-    protected function getRootline(int $id):array
+    protected function getRootline(int $id): array
     {
         $rootline = GeneralUtility::makeInstance(RootlineUtility::class, $id, '', $this->getPageRepository());
         $rootline->purgeCaches();
@@ -199,10 +200,10 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
         $combinedHash = $this->fastHash($queryString . ':' . $path);
         $queryBuilder = $this->getMapQueryBuilder();
         $recordExists = (bool) $queryBuilder
-            ->select('querystring_hash')
+            ->select('combined_hash')
             ->from('tx_autourls_map')
             ->where(
-                $queryBuilder->expr()->eq('combined_hash', $combinedHash)
+                $queryBuilder->expr()->eq('combined_hash', $queryBuilder->createNamedParameter($combinedHash))
             )
             ->execute()->fetchColumn();
         if ($recordExists) {
@@ -211,7 +212,6 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
                 ->where($queryBuilder->expr()->eq('combined_hash', $combinedHash))
                 ->set('encoding_expires', $this->getExpiryTimestamp())
                 ->set('path', $path)
-                ->set('path_hash', $this->fastHash($path))
                 ->set('is_shortcut', $isShortcut)
                 ->execute();
         } else {
@@ -219,10 +219,8 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
                 ->insert('tx_autourls_map')
                 ->values([
                     'combined_hash' => $combinedHash,
-                    'querystring_hash' => $this->fastHash($queryString),
                     'querystring' => $queryString,
                     'path' => $path,
-                    'path_hash' => $this->fastHash($path),
                     'encoding_expires' => $this->getExpiryTimestamp(),
                     'is_shortcut' => $isShortcut,
                 ])
@@ -235,14 +233,14 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
      *
      * @return int
      */
-    protected function getExpiryTimestamp():int
+    protected function getExpiryTimestamp(): int
     {
         if ($GLOBALS['TSFE']->no_cache || (boolean) $GLOBALS['TSFE']->page['no_cache']) {
             $lifetime = 0;
         } else {
             $lifetime = 86400;
             $variance = .25;
-            $lifetime = rand((1 - $variance) * $lifetime, (1 + $variance) * $lifetime);
+            $lifetime = rand((int) ((1 - $variance) * $lifetime), (int) ((1 + $variance) * $lifetime));
         }
         return $GLOBALS['EXEC_TIME'] + $lifetime;
     }
@@ -251,7 +249,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
      * @param string $title
      * @return string
      */
-    protected function slugify(string $title):string
+    protected function slugify(string $title): string
     {
         $charset = $GLOBALS['TYPO3_CONF_VARS']['BE']['forceCharset'] ?? 'utf-8';
         $slug = $this->getCharsetConverter()->conv_case($charset, $title, 'toLower');
@@ -310,7 +308,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
     /**
      * @return CharsetConverter
      */
-    protected function getCharsetConverter():CharsetConverter
+    protected function getCharsetConverter(): CharsetConverter
     {
         return GeneralUtility::makeInstance(CharsetConverter::class);
     }
@@ -318,7 +316,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
     /**
      * @return PageRepository
      */
-    protected function getPageRepository():PageRepository
+    protected function getPageRepository(): PageRepository
     {
         return $this->getTyposcriptFrontendController()->sys_page;
     }
@@ -326,7 +324,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
     /**
      * @return TemplateService
      */
-    protected function getTemplateService():TemplateService
+    protected function getTemplateService(): TemplateService
     {
         return $this->getTyposcriptFrontendController()->tmpl;
     }
@@ -334,7 +332,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
     /**
      * @return TypoScriptFrontendController
      */
-    protected function getTyposcriptFrontendController():TypoScriptFrontendController
+    protected function getTyposcriptFrontendController(): TypoScriptFrontendController
     {
         static $typoscriptFrontendController;
         if (!$typoscriptFrontendController instanceof TypoScriptFrontendController) {
@@ -348,7 +346,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
      * @param int $typeNum
      * @return TypoScriptFrontendController
      */
-    protected function createTsfeInstance(int $id = 1, int $typeNum = 0):TypoScriptFrontendController
+    protected function createTsfeInstance(int $id = 1, int $typeNum = 0): TypoScriptFrontendController
     {
         if (!is_object($GLOBALS['TT'])) {
             $GLOBALS['TT'] = new TimeTracker();
