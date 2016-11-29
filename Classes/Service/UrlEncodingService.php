@@ -341,20 +341,23 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
      */
     protected function createTsfeInstance($id = 1, $typeNum = 0)
     {
+        if ($GLOBALS['TSFE'] instanceof TypoScriptFrontendController) {
+            return $GLOBALS['TSFE'];
+        }
         if (!is_object($GLOBALS['TT'])) {
             $GLOBALS['TT'] = new TimeTracker();
             $GLOBALS['TT']->start();
         }
-        $typoscriptFrontendController = GeneralUtility::makeInstance(TypoScriptFrontendController::class, $GLOBALS['TYPO3_CONF_VARS'], $id, $typeNum);
-        $typoscriptFrontendController->sys_page = GeneralUtility::makeInstance(PageRepository::class);
-        $typoscriptFrontendController->sys_page->init(TRUE);
-        $typoscriptFrontendController->connectToDB();
-        $typoscriptFrontendController->initFEuser();
-        $typoscriptFrontendController->determineId();
-        $typoscriptFrontendController->initTemplate();
-        $typoscriptFrontendController->rootLine = $typoscriptFrontendController->sys_page->getRootLine($id, '');
-        $typoscriptFrontendController->getConfigArray();
-        return $typoscriptFrontendController;
+        $GLOBALS['TSFE'] = GeneralUtility::makeInstance(TypoScriptFrontendController::class, $GLOBALS['TYPO3_CONF_VARS'], $id, $typeNum);
+        $GLOBALS['TSFE']->sys_page = GeneralUtility::makeInstance(PageRepository::class);
+        $GLOBALS['TSFE']->sys_page->init(TRUE);
+        $GLOBALS['TSFE']->connectToDB();
+        $GLOBALS['TSFE']->initFEuser();
+        $GLOBALS['TSFE']->determineId();
+        $GLOBALS['TSFE']->initTemplate();
+        $GLOBALS['TSFE']->rootLine = $GLOBALS['TSFE']->sys_page->getRootLine($id, '');
+        $GLOBALS['TSFE']->getConfigArray();
+        return $GLOBALS['TSFE'];
     }
 
 }
