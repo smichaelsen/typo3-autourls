@@ -27,6 +27,9 @@ class UrlDecodingService extends AbstractUrlMapService implements SingletonInter
      */
     private function findQueryStringForPathInMap($path)
     {
+        if (strpos($path, '?') !== false) {
+            $path = substr($path, 0, strpos($path, '?'));
+        }
         $record = $this->getDatabaseConnection()->exec_SELECTgetSingleRow(
             'querystring',
             'tx_autourls_map JOIN sys_domain ON (tx_autourls_map.rootpage_id = sys_domain.pid) ',

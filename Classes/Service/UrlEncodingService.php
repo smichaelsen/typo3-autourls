@@ -85,16 +85,24 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
                 unset($urlParameters['cHash']);
             }
             $path = join('/', $pathSegments);
+            $this->insertOrRenewMapEntry(
+                $this->parametersArrayToQueryString(array_diff_assoc(
+                    $this->queryStringToParametersArray($queryString),
+                    $urlParameters
+                )),
+                $path,
+                $isShortcut
+            );
+            $path = rtrim($path, '/') . '/';
             if (count($urlParameters)) {
                 $path .= '?' . $this->parametersArrayToQueryString($urlParameters);
             }
-            $this->insertOrRenewMapEntry($queryString, $path, $isShortcut);
         }
         $prefix = $this->getTemplateService()->setup['config.']['absRefPrefix'];
         if (empty($prefix)) {
             $prefix = '/';
         }
-        return rtrim($prefix . $path, '/') . '/';
+        return $prefix . $path;
     }
 
     /**
@@ -133,7 +141,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
     protected function findPathForQueryStringInMap($queryString)
     {
         $record = $this->getDatabaseConnection()->exec_SELECTgetSingleRow(
-            'querystring',
+            'path',
             'tx_autourls_map',
             'querystring = ' . $this->getDatabaseConnection()->fullQuoteStr($queryString, 'tx_autourls_map') . ' AND encoding_expires > ' . (int) $GLOBALS['EXEC_TIME'],
             '',
