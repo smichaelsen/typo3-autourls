@@ -97,6 +97,11 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
             if (count($urlParameters)) {
                 $path .= '?' . $this->parametersArrayToQueryString($urlParameters);
             }
+        } else {
+            // add trailing slash to path from db cache
+            if (!empty($path)) {
+                $path .= '/';
+            }
         }
         $prefix = $this->getTemplateService()->setup['config.']['absRefPrefix'];
         if (empty($prefix)) {
