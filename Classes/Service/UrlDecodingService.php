@@ -27,16 +27,21 @@ class UrlDecodingService extends AbstractUrlMapService implements SingletonInter
      */
     private function findQueryStringForPathInMap($path)
     {
+        $pathContainedAdditionalParameters = false;
         if (strpos($path, '?') !== false) {
             $path = substr($path, 0, strpos($path, '?'));
+            $pathContainedAdditionalParameters = true;
         }
         $record = $this->getDatabaseConnection()->exec_SELECTgetSingleRow(
-            'querystring',
+            'querystring, chash',
             'tx_autourls_map JOIN sys_domain ON (tx_autourls_map.rootpage_id = sys_domain.pid) ',
             'tx_autourls_map.path = ' . $this->getDatabaseConnection()->fullQuoteStr(rtrim($path, '/'), 'tx_autourls_map') . ' AND tx_autourls_map.is_shortcut = 0 AND sys_domain.hidden = 0 AND sys_domain.domainName = ' . $this->getDatabaseConnection()->fullQuoteStr(GeneralUtility::getIndpEnv('HTTP_HOST'), 'sys_domain')
         );
         if (is_array($record) && !empty($record['querystring'])) {
-            return $record['querystring'];
+            if ($pathContainedAdditionalParameters) {
+                return $record['querystring'];
+            }
+            return $record['querystring'] . '&cHash=' . $record['chash'];
         }
         return null;
     }

@@ -82,16 +82,24 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
                 }
             }
             if (count($urlParameters) === 1 && isset($urlParameters['cHash'])) {
+                $cHash = $urlParameters['cHash'];
                 unset($urlParameters['cHash']);
+            } else {
+                $cHash = null;
+            }
+            $replacedParameters = array_diff_assoc(
+                $this->queryStringToParametersArray($queryString),
+                $urlParameters
+            );
+            if (isset($replacedParameters['cHash'])) {
+                unset($replacedParameters['cHash']);
             }
             $path = join('/', $pathSegments);
             $this->insertOrRenewMapEntry(
-                $this->parametersArrayToQueryString(array_diff_assoc(
-                    $this->queryStringToParametersArray($queryString),
-                    $urlParameters
-                )),
+                $this->parametersArrayToQueryString($replacedParameters),
                 $path,
-                $isShortcut
+                $isShortcut,
+                $cHash
             );
             $path = rtrim($path, '/') . '/';
             if (count($urlParameters)) {
@@ -211,17 +219,18 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
      * @param string $queryString
      * @param string $path
      * @param bool $isShortcut
+     * @param string $cHash
      */
-    protected function insertOrRenewMapEntry($queryString, $path, $isShortcut)
+    protected function insertOrRenewMapEntry($queryString, $path, $isShortcut, $cHash)
     {
         $urlParameters = $this->queryStringToParametersArray($queryString);
         $rootPageUid = $this->getRootline($urlParameters['id'])[0]['uid'];
         $query = sprintf(
             '
             INSERT INTO
-                tx_autourls_map (encoding_expires, is_shortcut, path, querystring, rootpage_id)
+                tx_autourls_map (encoding_expires, is_shortcut, path, querystring, rootpage_id, chash)
             VALUES
-                (%1$d, %2$d, %3$s, %4$s, %5$d)
+                (%1$d, %2$d, %3$s, %4$s, %5$d, %6$s)
             ON DUPLICATE KEY UPDATE
                 encoding_expires = %1$d
             ',
@@ -229,7 +238,8 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
             $isShortcut,
             $this->getDatabaseConnection()->fullQuoteStr($path, 'tx_autourls_map'),
             $this->getDatabaseConnection()->fullQuoteStr($queryString, 'tx_autourls_map'),
-            $rootPageUid
+            $rootPageUid,
+            $this->getDatabaseConnection()->fullQuoteStr($cHash, 'tx_autourls_map')
         );
         $this->getDatabaseConnection()->sql_query($query);
     }
