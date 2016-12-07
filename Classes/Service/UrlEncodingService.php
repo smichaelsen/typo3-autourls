@@ -28,10 +28,10 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
      */
     public function encodeFromQueryString($queryString)
     {
-        $isShortcut = false;
-        $targetLanguageUid = 0;
         $path = $this->findPathForQueryStringInMap($queryString);
         if ($path === null) {
+            $isShortcut = false;
+            $targetLanguageUid = 0;
             $urlParameters = $this->queryStringToParametersArray($queryString);
             $pathSegments = [];
             if (isset($urlParameters['L'])) {
@@ -101,7 +101,9 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
                 $isShortcut,
                 $cHash
             );
-            $path = rtrim($path, '/') . '/';
+            if (!empty($path)) {
+                $path = $path . '/';
+            }
             if (count($urlParameters)) {
                 $path .= '?' . $this->parametersArrayToQueryString($urlParameters);
             }
@@ -160,7 +162,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
             '',
             'encoding_expires DESC'
         );
-        if (is_array($record) && !empty($record['path'])) {
+        if (is_array($record)) {
             return $record['path'];
         }
         return null;
