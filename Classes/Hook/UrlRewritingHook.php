@@ -30,6 +30,7 @@ class UrlRewritingHook
         if ($decodedUrlParameters === null) {
             return;
         }
+        GeneralUtility::_GETset($decodedUrlParameters);
         $typoscriptFrontendController->mergingWithGetVars($decodedUrlParameters);
         $typoscriptFrontendController->id = (int)$decodedUrlParameters['id'];
     }
