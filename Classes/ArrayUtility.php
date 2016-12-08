@@ -17,7 +17,8 @@ class ArrayUtility
         foreach ($needleArray as $needleKey => $needleValue) {
             if (
                 is_array($needleValue)
-                && !self::array_has_all_keys_of_array($haystackArray[$needleKey], $needleArray[$needleKey])) {
+                && !self::array_has_all_keys_of_array($haystackArray[$needleKey], $needleArray[$needleKey])
+            ) {
                 return false;
             }
         }
@@ -38,5 +39,4 @@ class ArrayUtility
         }
         return true;
     }
-
 }

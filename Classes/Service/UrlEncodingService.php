@@ -1,26 +1,17 @@
 <?php
 namespace Smichaelsen\Autourls\Service;
 
-use Smichaelsen\Autourls\ArrayUtility;
-use Smichaelsen\Autourls\ExtensionParameterRegistry;
-use TYPO3\CMS\Backend\Utility\BackendUtility;
-use TYPO3\CMS\Core\Cache\CacheManager;
-use TYPO3\CMS\Core\Charset\CharsetConverter;
+use Smichaelsen\Autourls\Service\ParameterEncoder\CHashEncoder;
+use Smichaelsen\Autourls\Service\ParameterEncoder\ExtensionParameterEncoder;
+use Smichaelsen\Autourls\Service\ParameterEncoder\LanguageEncoder;
+use Smichaelsen\Autourls\Service\ParameterEncoder\PageIdEncoder;
+use Smichaelsen\Autourls\Service\ParameterEncoder\ParameterEncoderInterface;
 use TYPO3\CMS\Core\SingletonInterface;
-use TYPO3\CMS\Core\TimeTracker\TimeTracker;
-use TYPO3\CMS\Core\TypoScript\TemplateService;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
-use TYPO3\CMS\Core\Utility\RootlineUtility;
-use TYPO3\CMS\Frontend\Controller\TypoScriptFrontendController;
-use TYPO3\CMS\Frontend\Page\PageRepository;
+use TYPO3\CMS\Extbase\Object\ObjectManager;
 
 class UrlEncodingService extends AbstractUrlMapService implements SingletonInterface
 {
-
-    const SUPPORTED_DOKTYPES = [
-        PageRepository::DOKTYPE_DEFAULT,
-        PageRepository::DOKTYPE_SHORTCUT,
-    ];
 
     /**
      * @param string $queryString
@@ -30,82 +21,38 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
     {
         $path = $this->findPathForQueryStringInMap($queryString);
         if ($path === null) {
-            $isShortcut = false;
-            $targetLanguageUid = 0;
-            $urlParameters = $this->queryStringToParametersArray($queryString);
-            $pathSegments = [];
-            if (isset($urlParameters['L'])) {
-                if ((int) $urlParameters['L'] > 0) {
-                    $languageRecord = BackendUtility::getRecord('sys_language', (int) $urlParameters['L']);
-                    if (is_array($languageRecord)) {
-                        $targetLanguageUid = (int) $urlParameters['L'];
-                        $pathSegments[] = $languageRecord['language_isocode'];
-                    }
-                }
-                unset($urlParameters['L']);
-            }
-            if (isset($urlParameters['id'])) {
-                $pageRecord = BackendUtility::getRecord('pages', (int) $urlParameters['id']);
-                if ($targetLanguageUid > 0) {
-                    $pageRecord = $this->getPageRepository()->getPageOverlay($pageRecord, $targetLanguageUid);
-                }
-                if (
-                    (int) $pageRecord['doktype'] === PageRepository::DOKTYPE_SHORTCUT
-                    && (int) $pageRecord['shortcut_mode'] === PageRepository::SHORTCUT_MODE_NONE
-                ) {
-                    $pageRecord = $this->getTyposcriptFrontendController()->getPageShortcut(
-                        $pageRecord['shortcut'],
-                        $pageRecord['shortcut_mode'],
-                        $pageRecord['uid']
-                    );
-                    $isShortcut = true;
-                }
-                $pagePathSegment = $this->getPathForPageRecord($pageRecord, $targetLanguageUid);
-                if ($pagePathSegment === null) {
-                    return '?' . $queryString;
-                }
-                if (!empty($pagePathSegment)) {
-                    $pathSegments[] = $pagePathSegment;
-                }
-                unset($urlParameters['id']);
-            }
-            foreach (ExtensionParameterRegistry::get() as $routeName => $routeConfiguration) {
-                $extensionQueryParameters = $this->queryStringToParametersArray($routeConfiguration['queryString']);
-                if (ArrayUtility::array_has_all_keys_of_array($urlParameters, $extensionQueryParameters)) {
-                    $this->replaceExtensionParameters(
-                        $urlParameters,
-                        $pathSegments,
-                        $this->queryStringToParametersArray($routeConfiguration['queryString']),
-                        empty($routeConfiguration['tableName']) ? null : $routeConfiguration['tableName'],
-                        $targetLanguageUid
-                    );
-                }
-            }
-            if (count($urlParameters) === 1 && isset($urlParameters['cHash'])) {
-                $cHash = $urlParameters['cHash'];
-                unset($urlParameters['cHash']);
-            } else {
-                $cHash = null;
+            $urlEncodingData = [
+                'originalQueryString' => $queryString,
+                'remainingUrlParameters' => $this->queryStringToParametersArray($queryString),
+                'encodedPathSegments' => [],
+                'isShortcut' => false,
+                'targetLanguageUid' => 0,
+                'cHash' => null,
+                'rootPage' => null,
+            ];
+            foreach ($this->getParameterEncoders() as $parameterEncoder) {
+                $urlEncodingData = $parameterEncoder->encode($urlEncodingData);
             }
             $replacedParameters = array_diff_assoc(
-                $this->queryStringToParametersArray($queryString),
-                $urlParameters
+                $this->queryStringToParametersArray($urlEncodingData['originalQueryString']),
+                $urlEncodingData['remainingUrlParameters']
             );
             if (isset($replacedParameters['cHash'])) {
                 unset($replacedParameters['cHash']);
             }
-            $path = join('/', $pathSegments);
+            $path = join('/', $urlEncodingData['encodedPathSegments']);
             $this->insertOrRenewMapEntry(
                 $this->parametersArrayToQueryString($replacedParameters),
                 $path,
-                $isShortcut,
-                $cHash
+                $urlEncodingData['isShortcut'],
+                $urlEncodingData['cHash'],
+                $urlEncodingData['rootPage']
             );
             if (!empty($path)) {
                 $path = $path . '/';
             }
-            if (count($urlParameters)) {
-                $path .= '?' . $this->parametersArrayToQueryString($urlParameters);
+            if (count($urlEncodingData['remainingUrlParameters'])) {
+                $path .= '?' . $this->parametersArrayToQueryString($urlEncodingData['remainingUrlParameters']);
             }
         } else {
             // add trailing slash to path from db cache
@@ -113,11 +60,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
                 $path .= '/';
             }
         }
-        $prefix = $this->getTemplateService()->setup['config.']['absRefPrefix'];
-        if (empty($prefix)) {
-            $prefix = '/';
-        }
-        return $prefix . $path;
+        return '/' . $path;
     }
 
     /**
@@ -150,6 +93,20 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
     }
 
     /**
+     * @return array|ParameterEncoderInterface[]
+     */
+    protected function getParameterEncoders()
+    {
+        $objectManager = GeneralUtility::makeInstance(ObjectManager::class);
+        return [
+            $objectManager->get(LanguageEncoder::class),
+            $objectManager->get(PageIdEncoder::class),
+            $objectManager->get(ExtensionParameterEncoder::class),
+            $objectManager->get(CHashEncoder::class),
+        ];
+    }
+
+    /**
      * @param string $queryString
      * @return string|null
      */
@@ -169,64 +126,14 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
     }
 
     /**
-     * @param array $targetPage
-     * @param int $targetLanguageUid
-     * @return null|string
-     */
-    protected function getPathForPageRecord(array $targetPage, $targetLanguageUid)
-    {
-        if (!in_array((int) $targetPage['doktype'], self::SUPPORTED_DOKTYPES)) {
-            return null;
-        }
-        $rootline = $this->getRootline($targetPage['uid']);
-        if ($targetLanguageUid > 0) {
-            $rootline = $this->getPageRepository()->getPagesOverlay($rootline, $targetLanguageUid);
-        }
-        $pathSegments = [];
-        foreach ($rootline as $rootlinePage) {
-            if ($rootlinePage['is_siteroot']) {
-                break;
-            }
-            $slugField = '';
-            foreach (['nav_title', 'title', 'uid'] as $possibleSlugField) {
-                if (!empty($rootlinePage[$possibleSlugField])) {
-                    $slugField = $possibleSlugField;
-                    break;
-                }
-            }
-            $pathSegments[] = $this->slugify($rootlinePage[$slugField]);
-        }
-        return join('/', array_reverse($pathSegments));
-    }
-
-    /**
-     * Get the rootline directly from RootlineUtility instead of TSFE->sys_page to circumvent the rootline cache
-     *
-     * @param int $id
-     * @return array
-     */
-    protected function getRootline($id)
-    {
-        static $rootlines = [];
-        if (!isset($rootlines[$id])) {
-            $rootline = GeneralUtility::makeInstance(RootlineUtility::class, $id, '', $this->getPageRepository());
-            $rootline->purgeCaches();
-            GeneralUtility::makeInstance(CacheManager::class)->getCache('cache_rootline')->flush();
-            $rootlines[$id] = $rootline->get();
-        }
-        return $rootlines[$id];
-    }
-
-    /**
      * @param string $queryString
      * @param string $path
      * @param bool $isShortcut
      * @param string $cHash
+     * @param int $rootPage
      */
-    protected function insertOrRenewMapEntry($queryString, $path, $isShortcut, $cHash)
+    protected function insertOrRenewMapEntry($queryString, $path, $isShortcut, $cHash, $rootPage)
     {
-        $urlParameters = $this->queryStringToParametersArray($queryString);
-        $rootPageUid = $this->getRootline($urlParameters['id'])[0]['uid'];
         $query = sprintf(
             '
             INSERT INTO
@@ -240,7 +147,7 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
             $isShortcut,
             $this->getDatabaseConnection()->fullQuoteStr($path, 'tx_autourls_map'),
             $this->getDatabaseConnection()->fullQuoteStr($queryString, 'tx_autourls_map'),
-            $rootPageUid,
+            $rootPage,
             $this->getDatabaseConnection()->fullQuoteStr($cHash, 'tx_autourls_map')
         );
         $this->getDatabaseConnection()->sql_query($query);
@@ -262,127 +169,4 @@ class UrlEncodingService extends AbstractUrlMapService implements SingletonInter
         }
         return $GLOBALS['EXEC_TIME'] + $lifetime;
     }
-
-    /**
-     * @param string $title
-     * @return string
-     */
-    protected function slugify($title)
-    {
-        $charset = empty($GLOBALS['TYPO3_CONF_VARS']['BE']['forceCharset']) ? 'utf-8' : $GLOBALS['TYPO3_CONF_VARS']['BE']['forceCharset'];
-        $slug = $this->getCharsetConverter()->conv_case($charset, $title, 'toLower');
-        $slug = strip_tags($slug);
-        $slug = str_replace(['%', '?', '!', '#'], '', $slug);
-        $slug = preg_replace('/[ \-+_]+/', '-', $slug);
-        $slug = $this->getCharsetConverter()->specCharsToASCII($charset, $slug);
-        return $slug;
-    }
-
-    /**
-     * @param array $urlParameters
-     * @param array $pathSegments
-     * @param array $extensionParameters
-     * @param string $extensionTableName
-     * @param int $targetLanguageUid
-     * @throws \Exception
-     */
-    protected function replaceExtensionParameters(array &$urlParameters, array &$pathSegments, array $extensionParameters, $extensionTableName = null, $targetLanguageUid = 0)
-    {
-        foreach ($extensionParameters as $extensionParameterName => $extensionParameterValue) {
-            if ($extensionParameterValue === $urlParameters[$extensionParameterName]) {
-                unset($urlParameters[$extensionParameterName]);
-            } elseif ($extensionParameterValue === '_PASS_') {
-                $pathSegments[] = $this->slugify($urlParameters[$extensionParameterName]);
-                unset($urlParameters[$extensionParameterName]);
-            } elseif ($extensionParameterValue === '_UID_') {
-                if ($extensionTableName === null) {
-                    throw new \Exception('There is an autourl extension parameter query string with _UID_ parameter but without defined table name', 1467096979);
-                }
-                $record = BackendUtility::getRecord($extensionTableName, $urlParameters[$extensionParameterName]);
-                if (is_array($record)) {
-                    if ($targetLanguageUid > 0) {
-                        $record = $this->getPageRepository()->getRecordOverlay($extensionTableName, $record, $targetLanguageUid);
-                    }
-                    $value = BackendUtility::getRecordTitle($extensionTableName, $record);
-                } else {
-                    $value = $urlParameters[$extensionParameterName];
-                }
-                $pathSegments[] = $this->slugify($value);
-                unset($urlParameters[$extensionParameterName]);
-            } elseif (is_array($extensionParameterValue)) {
-                $this->replaceExtensionParameters(
-                    $urlParameters[$extensionParameterName],
-                    $pathSegments,
-                    $extensionParameters[$extensionParameterName],
-                    $extensionTableName
-                );
-                if (count($urlParameters[$extensionParameterName]) === 0) {
-                    unset($urlParameters[$extensionParameterName]);
-                }
-            }
-        }
-    }
-
-    /**
-     * @return CharsetConverter
-     */
-    protected function getCharsetConverter()
-    {
-        return GeneralUtility::makeInstance(CharsetConverter::class);
-    }
-
-    /**
-     * @return PageRepository
-     */
-    protected function getPageRepository()
-    {
-        return $this->getTyposcriptFrontendController()->sys_page;
-    }
-
-    /**
-     * @return TemplateService
-     */
-    protected function getTemplateService()
-    {
-        return $this->getTyposcriptFrontendController()->tmpl;
-    }
-
-    /**
-     * @return TypoScriptFrontendController
-     */
-    protected function getTyposcriptFrontendController()
-    {
-        static $typoscriptFrontendController;
-        if (!$typoscriptFrontendController instanceof TypoScriptFrontendController) {
-            $typoscriptFrontendController = empty($GLOBALS['TSFE']) ? $this->createTsfeInstance() : $GLOBALS['TSFE'];
-        }
-        return $typoscriptFrontendController;
-    }
-
-    /**
-     * @param int $id
-     * @param int $typeNum
-     * @return TypoScriptFrontendController
-     */
-    protected function createTsfeInstance($id = 1, $typeNum = 0)
-    {
-        if ($GLOBALS['TSFE'] instanceof TypoScriptFrontendController) {
-            return $GLOBALS['TSFE'];
-        }
-        if (!is_object($GLOBALS['TT'])) {
-            $GLOBALS['TT'] = new TimeTracker();
-            $GLOBALS['TT']->start();
-        }
-        $GLOBALS['TSFE'] = GeneralUtility::makeInstance(TypoScriptFrontendController::class, $GLOBALS['TYPO3_CONF_VARS'], $id, $typeNum);
-        $GLOBALS['TSFE']->sys_page = GeneralUtility::makeInstance(PageRepository::class);
-        $GLOBALS['TSFE']->sys_page->init(TRUE);
-        $GLOBALS['TSFE']->connectToDB();
-        $GLOBALS['TSFE']->initFEuser();
-        $GLOBALS['TSFE']->determineId();
-        $GLOBALS['TSFE']->initTemplate();
-        $GLOBALS['TSFE']->rootLine = $GLOBALS['TSFE']->sys_page->getRootLine($id, '');
-        $GLOBALS['TSFE']->getConfigArray();
-        return $GLOBALS['TSFE'];
-    }
-
 }

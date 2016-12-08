@@ -52,4 +52,11 @@ class ExtensionParameterRegistry
         return self::$registry;
     }
 
+    /**
+     *
+     */
+    public static function reset()
+    {
+        self::$registry = [];
+    }
 }
