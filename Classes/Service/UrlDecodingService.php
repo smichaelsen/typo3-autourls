@@ -41,8 +41,7 @@ class UrlDecodingService extends AbstractUrlMapService implements SingletonInter
             $querystring = $record['querystring'];
             if (!empty($record['chash'])) {
                 $querystring .= '&cHash=' . $record['chash'];
-            }
-            if (!empty($remainingParameters)) {
+            } elseif (!empty($remainingParameters)) {
                 $querystring .= '&' . $remainingParameters;
             }
             return $querystring;
