@@ -7,6 +7,11 @@ abstract class AbstractUrlMapService
 {
 
     /**
+     * @var DatabaseConnection
+     */
+    protected $databaseConnection;
+
+    /**
      * Uses the very fast crc32 hash.
      * This is NO cryptographic hash function(!!) but hashes strings quickly down
      * to integers for better database performance.
@@ -43,7 +48,17 @@ abstract class AbstractUrlMapService
      */
     protected function getDatabaseConnection()
     {
-        return $GLOBALS['TYPO3_DB'];
+        return isset($this->databaseConnection) ? $this->databaseConnection : $GLOBALS['TYPO3_DB'];
+    }
+
+    /**
+     * Used for Unit tests
+     *
+     * @param DatabaseConnection $databaseConnection
+     */
+    public function setDatabaseConnection($databaseConnection)
+    {
+        $this->databaseConnection = $databaseConnection;
     }
 
 }
