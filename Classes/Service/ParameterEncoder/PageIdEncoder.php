@@ -4,6 +4,7 @@ namespace Smichaelsen\Autourls\Service\ParameterEncoder;
 use Smichaelsen\Autourls\Service\Slugifier;
 use TYPO3\CMS\Backend\Utility\BackendUtility;
 use TYPO3\CMS\Core\Cache\CacheManager;
+use TYPO3\CMS\Core\TimeTracker\NullTimeTracker;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Utility\RootlineUtility;
 use TYPO3\CMS\Frontend\Controller\TypoScriptFrontendController;
@@ -152,6 +153,7 @@ class PageIdEncoder implements ParameterEncoderInterface
         if ($GLOBALS['TSFE'] instanceof TypoScriptFrontendController) {
             return;
         }
+        $GLOBALS['TT'] = new NullTimeTracker();
         $GLOBALS['TSFE'] = GeneralUtility::makeInstance(TypoScriptFrontendController::class, $GLOBALS['TYPO3_CONF_VARS'], $id, $typeNum);
         $GLOBALS['TSFE']->sys_page = GeneralUtility::makeInstance(PageRepository::class);
         $GLOBALS['TSFE']->sys_page->init(TRUE);
