@@ -28,7 +28,7 @@ class UrlRewritingHook
         $pagePath = $typoscriptFrontendController->siteScript;
         $decodedUrlParameters = GeneralUtility::makeInstance(UrlDecodingService::class)->decodeFromPagePath($pagePath);
         if ($decodedUrlParameters === null) {
-            return;
+            $typoscriptFrontendController->pageNotFoundAndExit();
         }
         GeneralUtility::_GETset($decodedUrlParameters);
         $typoscriptFrontendController->mergingWithGetVars($decodedUrlParameters);
